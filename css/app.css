@@ -806,6 +806,50 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .w-image img { width: 100%; flex: 1; min-height: 0; display: block; }
 .wi-cap { font-size: max(12px, 6cqh); padding: 1cqh 2cqw; font-weight: 700; }
 
+/* 天氣與空氣品質 */
+.w-wx { justify-content: space-between; align-items: stretch; gap: 1.4cqh; padding: 3.4cqh 4.5cqw; font-size: max(11px, min(4.4cqh, 6.2cqw)); line-height: 1.3; }
+.wx-top { display: flex; justify-content: space-between; align-items: baseline; gap: .6em; font-weight: 800; white-space: nowrap; }
+.wx-top span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.wx-at { flex: none; color: #6c7680; font-weight: 600; font-size: .82em; }
+.wx-now { display: flex; align-items: center; gap: .25em; line-height: 1; }
+.wx-ic { font-size: 3em; }
+.wx-temp { font-size: 3.3em; font-weight: 900; letter-spacing: -.02em; }
+.wx-temp small { font-size: .36em; font-weight: 700; margin-left: .06em; vertical-align: .95em; }
+.wx-desc { display: flex; flex-direction: column; gap: .3em; margin-left: .35em; min-width: 0; }
+.wx-desc b { font-size: 1.3em; }
+.wx-info { display: flex; flex-wrap: wrap; gap: .2em .9em; color: #3d4852; }
+.wx-aq { display: flex; align-items: center; flex-wrap: wrap; gap: .3em .7em; }
+.wx-aqb { background: var(--aq); color: var(--aqt); padding: .15em .75em; border-radius: 999px; font-weight: 800; }
+.wx-aqb b { font-size: 1.25em; }
+.wx-pm b { font-size: 1.15em; }
+.wx-tip { color: #3d4852; font-size: .9em; }
+.wx-fc { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3em; border-top: 1px dashed #d5dbe2; padding-top: .45em; }
+.wx-fc > div { display: flex; flex-direction: column; align-items: center; font-size: .9em; line-height: 1.25; }
+.wx-fi { font-size: 1.6em; }
+.wx-fc small { color: #1c64c8; font-size: .9em; }
+.wx-msg { margin: auto; text-align: center; display: flex; flex-direction: column; gap: .4em; font-size: 1.2em; font-weight: 700; color: #6c7680; }
+.wx-msg small { font-size: .7em; font-weight: 600; }
+@container (max-height: 330px) { .wx-fc { display: none; } }
+@container (max-height: 220px) { .wx-info, .wx-tip { display: none; } }
+
+/* 影片／網頁嵌入：拖曳標題列移動；拖曳、拉大小時讓滑鼠穿過影片 */
+.w-embed { padding: 0; gap: 0; justify-content: flex-start; align-items: stretch; }
+.wem-head { flex: none; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px 0 14px; background: #fff; border-bottom: 1px solid #e3e7ec; font-weight: 800; font-size: 15px; color: #25313b; }
+.wall:not(.locked) .wem-head { cursor: move; }
+.wall.locked .w-embed.nohead .wem-head { display: none; }
+.wem-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wem-open { flex: none; padding: 2px 9px; border-radius: 8px; color: #1c64c8; text-decoration: none; font-size: 18px; }
+.wem-open:hover { background: #eef2fb; }
+.wem-frame { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #fff; }
+.wem-frame.yt { background: #000; }
+.wem-frame iframe { position: absolute; left: 0; top: 0; border: 0; display: block; width: calc(100% / var(--z, 1)); height: calc(100% / var(--z, 1)); transform: scale(var(--z, 1)); transform-origin: 0 0; }
+.w-canvas:has(.wd.dragging) iframe { pointer-events: none; }
+.wem-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqmin; padding: 4cqmin; text-align: center; color: #6c7680; font-size: max(14px, min(6cqh, 5cqw)); }
+.wem-big { font-size: min(26cqh, 20cqw); line-height: 1; }
+.wem-block { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5em; padding: 1em; background: #fff; color: #b8321f; font-weight: 800; text-align: center; font-size: max(14px, min(6cqh, 5cqw)); }
+.wem-block small { color: #6c7680; font-weight: 600; font-size: .75em; }
+.wem-hold { position: fixed; left: -10000px; top: 0; width: 10px; height: 10px; overflow: hidden; pointer-events: none; }
+
 /* 設定面板 */
 .w-panel { position: absolute; right: 12px; top: 60px; bottom: 70px; width: 350px; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, .28); z-index: 20001; display: flex; flex-direction: column; user-select: text; -webkit-user-select: text; color: var(--ink); }
 .wp-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 18px; }

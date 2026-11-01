@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>YouTube 播放</title>
+<style>
+html, body { margin: 0; height: 100%; background: #000; }
+iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+p { margin: 40vh 1em 0; color: #ccc; font: 16px/1.5 system-ui, sans-serif; text-align: center; }
+</style>
+</head>
+<body>
+<script>
+/* YouTube 中繼頁：班級百寶箱、動態牆直接從電腦打開（file://）時，網頁沒有網址，YouTube 會拒絕播放（錯誤 153）。
+   這時小工具改成嵌入這一頁，由這一頁（GitHub 網址）去播 YouTube。網址 # 後面是要播的 youtube-nocookie 嵌入網址；只接受 YouTube。 */
+(function () {
+  var src = '';
+  try { src = decodeURIComponent(location.hash.slice(1)); } catch (e) { }
+  if (!/^https:\/\/www\.youtube-nocookie\.com\/embed\/[\w-]+(\?[\w=&%.-]*)?$/.test(src)) {
+    document.body.innerHTML = '<p>沒有要播放的影片</p>';
+    return;
+  }
+  var f = document.createElement('iframe');
+  f.src = src;
+  f.title = 'YouTube 影片';
+  f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+  f.allowFullscreen = true;
+  f.referrerPolicy = 'strict-origin-when-cross-origin';
+  document.body.appendChild(f);
+})();
+</script>
+</body>
+</html>

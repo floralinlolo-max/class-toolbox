@@ -97,6 +97,141 @@ function drawShow(el, x, win) {
   el.classList.toggle('win', !!win);
 }
 
+/* ---------- 天氣與空氣品質（Open-Meteo：免申請金鑰，天氣是預報模式、空氣品質是 CAMS 模式推估） ---------- */
+const WX_PLACES = [
+  ['臺南市大內區', 23.1194, 120.3489], ['臺南市（市區）', 22.9908, 120.2133], ['臺北市', 25.0375, 121.5637], ['新北市（板橋）', 25.0143, 121.4672],
+  ['基隆市', 25.1283, 121.7419], ['桃園市', 24.9937, 121.301], ['新竹市', 24.8138, 120.9675], ['苗栗市', 24.5602, 120.8214], ['臺中市', 24.1477, 120.6736],
+  ['彰化市', 24.0809, 120.5385], ['南投市', 23.9157, 120.6639], ['雲林縣（斗六）', 23.7092, 120.5434], ['嘉義市', 23.4801, 120.4491], ['高雄市', 22.6273, 120.3014],
+  ['屏東市', 22.669, 120.4862], ['宜蘭市', 24.757, 121.7533], ['花蓮市', 23.9871, 121.6015], ['臺東市', 22.7583, 121.1444], ['澎湖（馬公）', 23.5655, 119.5862],
+  ['金門', 24.4493, 118.3767], ['馬祖（南竿）', 26.1505, 119.9499]
+];
+const WX_CODE = {
+  0: ['☀️', '晴天'], 1: ['🌤️', '晴時多雲'], 2: ['⛅', '多雲'], 3: ['☁️', '陰天'], 45: ['🌫️', '有霧'], 48: ['🌫️', '有霧'],
+  51: ['🌦️', '毛毛雨'], 53: ['🌦️', '毛毛雨'], 55: ['🌧️', '毛毛雨'], 56: ['🌧️', '凍毛毛雨'], 57: ['🌧️', '凍毛毛雨'],
+  61: ['🌧️', '小雨'], 63: ['🌧️', '中雨'], 65: ['🌧️', '大雨'], 66: ['🌧️', '凍雨'], 67: ['🌧️', '凍雨'],
+  71: ['🌨️', '小雪'], 73: ['🌨️', '下雪'], 75: ['🌨️', '大雪'], 77: ['🌨️', '霰'],
+  80: ['🌦️', '陣雨'], 81: ['🌧️', '陣雨'], 82: ['⛈️', '大陣雨'], 85: ['🌨️', '陣雪'], 86: ['🌨️', '陣雪'],
+  95: ['⛈️', '雷雨'], 96: ['⛈️', '雷雨'], 99: ['⛈️', '雷雨']
+};
+function wxLook(code, day = 1) {
+  const [i, t] = WX_CODE[code] || ['🌡️', '天氣'];
+  if (!day && code === 0) return ['🌙', '晴朗'];
+  if (!day && code === 1) return ['🌙', '晴時多雲'];
+  return [i, t];
+}
+// AQI 分級：六級的名稱和顏色照環境部空氣品質指標；最後一欄是給班上的戶外活動建議
+const AQI_LV = [
+  [50, '良好', '#2fb94a', '#fff', '可以正常戶外活動'],
+  [100, '普通', '#f7d300', '#3b3200', '可以正常戶外活動；特別敏感的同學留意身體狀況'],
+  [150, '對敏感族群不健康', '#ff7e00', '#fff', '有氣喘、過敏的同學減少劇烈的戶外活動'],
+  [200, '對所有族群不健康', '#e5332a', '#fff', '大家減少戶外活動，戶外課可改在室內'],
+  [300, '非常不健康', '#8f3f97', '#fff', '避免戶外活動，關好門窗'],
+  [Infinity, '危害', '#7e0023', '#fff', '停止戶外活動，留在室內']
+];
+const aqiLv = v => AQI_LV.find(l => v <= l[0]);
+const WX = {
+  mem: new Map(),   // 「緯度,經度」→ { at, data, p }；同一個地點的小工具共用，20 分鐘更新一次
+  k: (lat, lon) => (+lat).toFixed(2) + ',' + (+lon).toFixed(2),
+  get(lat, lon, force) {
+    const k = this.k(lat, lon);
+    let e = this.mem.get(k);
+    if (!e) { e = { at: 0, data: null, err: null, p: null }; try { const o = JSON.parse(localStorage.getItem('bxbox-wx:' + k) || 'null'); if (o) e.data = o; } catch (er) { } this.mem.set(k, e); }
+    const due = Date.now() - e.at > 20 * 60000;
+    if (!e.p && (force || due)) {
+      e.p = this.load(lat, lon).then(d => { e.data = d; e.err = null; e.at = Date.now(); try { localStorage.setItem('bxbox-wx:' + k, JSON.stringify(d)); } catch (er) { } },
+        er => { e.err = er; e.at = Date.now() - 15 * 60000; })   // 連不上就 5 分鐘後再試
+        .finally(() => { e.p = null; e.v = (e.v || 0) + 1; });
+    }
+    return e;
+  },
+  async load(lat, lon) {
+    const q = 'latitude=' + (+lat) + '&longitude=' + (+lon) + '&timezone=Asia%2FTaipei';
+    const js = r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
+    const [w, a] = await Promise.all([
+      fetch('https://api.open-meteo.com/v1/forecast?' + q + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max&forecast_days=4').then(js),
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?' + q + '&current=us_aqi,pm2_5,pm10').then(js).catch(() => null)
+    ]);
+    return { w, a, at: Date.now() };
+  }
+};
+
+// 網頁的安全規則（例如 claude.ai 雲端版）不准連到氣象網站或嵌入網頁時，小工具上直接說明，不要只是空白
+document.addEventListener('securitypolicyviolation', e => {
+  const d = e.effectiveDirective || e.violatedDirective || '', u = e.blockedURI || '';
+  if (/^connect-src/.test(d) && /open-meteo\.com/.test(u)) WX.blocked = true;
+  if (/^(frame|child)-src/.test(d)) $$('.wem-frame iframe').forEach(f => {
+    if (u && !f.src.startsWith(u.replace(/\/$/, ''))) return;
+    const w = f.parentNode; if (w.querySelector('.wem-block')) return;
+    w.append(h('div', { class: 'wem-block' }, '這個畫面不允許嵌入影片或網頁', h('small', null, '請按右上角的 ↗ 在新分頁打開，或改用班級百寶箱、單機版動態牆')));
+  });
+});
+
+/* ---------- 影片／網頁嵌入 ---------- */
+// 直接從電腦打開檔案（file://）時網頁沒有網址，YouTube 會拒絕播放（錯誤 153），改經過 GitHub 上的中繼頁播放（班級百寶箱/yt.html）
+const YT_RELAY = 'https://floralinlolo-max.github.io/class-toolbox/yt.html';
+const ytRelayed = () => !/^https?:$/.test(location.protocol);
+// 把貼上的網址換成可以嵌入的網址；YouTube 用不留 Cookie 的 youtube-nocookie.com
+function ytTime(s) {
+  if (!s) return 0;
+  if (/^\d+$/.test(s)) return +s;
+  const m = String(s).match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+  return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0;
+}
+function embedSrc(c) {
+  const raw = String(c.url || '').trim(); if (!raw) return null;
+  let u; try { u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw); } catch (e) { return null; }
+  if (!/^https?:$/.test(u.protocol) || /\s/.test(raw) || !u.hostname.includes('.')) return null;
+  const host = u.hostname.replace(/^(www|m)\./, '');
+  if (host === 'youtu.be' || /(^|\.)youtube(-nocookie)?\.com$/.test(host)) {
+    let id = host === 'youtu.be' ? u.pathname.slice(1).split('/')[0] : (u.pathname.match(/^\/(?:embed|shorts|live|v)\/([\w-]{6,})/) || [])[1] || u.searchParams.get('v');
+    if (id === 'videoseries') id = null;
+    const list = u.searchParams.get('list');
+    if (id || list) {
+      const p = new URLSearchParams({ rel: '0', playsinline: '1' }), start = +c.start || ytTime(u.searchParams.get('t') || u.searchParams.get('start'));
+      if (start) p.set('start', start);
+      if (c.autoplay) { p.set('autoplay', '1'); p.set('mute', '1'); }
+      if (c.loop) { p.set('loop', '1'); if (id && !list) p.set('playlist', id); }
+      if (list) p.set('list', list);
+      const src = 'https://www.youtube-nocookie.com/embed/' + (id || 'videoseries') + '?' + p;
+      return { kind: 'yt', src: ytRelayed() ? YT_RELAY + '#' + encodeURIComponent(src) : src, open: u.href, label: list && !id ? 'YouTube 播放清單' : 'YouTube 影片' };
+    }
+  }
+  // Google 簡報／文件／試算表／表單、Canva：換成它們的嵌入網址（「發布到網路」的 /d/e/… 和一般分享連結的 /d/… 不一樣）
+  let src = u.href;
+  const g = host === 'docs.google.com' && u.pathname.match(/^\/(presentation|document|spreadsheets|forms)\/d\/(e\/)?([\w-]+)/);
+  if (g) {
+    const base = 'https://docs.google.com/' + g[1] + '/d/' + (g[2] || '') + g[3];
+    src = g[1] === 'forms' ? base + '/viewform?embedded=true'
+      : !g[2] ? base + '/preview'
+      : g[1] === 'presentation' ? base + '/embed?start=false&loop=false' : base + '/pubhtml?widget=true';
+  } else if (/(^|\.)canva\.com$/.test(host) && /\/design\//.test(u.pathname) && !u.searchParams.has('embed')) {
+    u.searchParams.set('embed', ''); src = u.href.replace('embed=', 'embed');
+  }
+  return { kind: 'web', src, open: raw.match(/^https?:\/\//i) ? raw : 'https://' + raw, label: host };
+}
+// 動態牆重畫時（全螢幕、換頁、改設定），嵌入的影片／網頁先搬到旁邊再搬回來，影片才不會重頭播放（瀏覽器要支援 moveBefore）
+const EmbedKeep = {
+  hold: null, wait: [], depth: 0,
+  ok: () => typeof Element !== 'undefined' && typeof Element.prototype.moveBefore === 'function',
+  stash(scope) {
+    if (!scope || !this.ok()) return;
+    const list = scope.querySelectorAll('iframe[data-wid]'); if (!list.length) return;
+    if (!this.hold) this.hold = h('div', { class: 'wem-hold', 'aria-hidden': 'true' });
+    if (!this.hold.isConnected) document.body.append(this.hold);
+    for (const f of list) { try { this.hold.moveBefore(f, null); } catch (e) { } }
+  },
+  put(wrap, wid, src, make) { this.wait.push({ wrap, wid, src, make }); if (!this.depth) this.flush(); },
+  flush() {
+    const w = this.wait; this.wait = [];
+    for (const { wrap, wid, src, make } of w) {
+      const old = this.hold && [...this.hold.children].find(f => f.dataset.wid === wid && f.dataset.src === src);
+      if (old && wrap.isConnected) { try { wrap.moveBefore(old, null); continue; } catch (e) { } }
+      wrap.append(make());
+    }
+    if (this.hold) this.hold.replaceChildren();
+  }
+};
+
 /* ---------- 設定表單小工具 ---------- */
 const F = {
   row(label, ...kids) { return h('div', { class: 'wf' }, label ? h('div', { class: 'wf-l' }, label) : null, h('div', { class: 'wf-c' }, kids)); },
@@ -592,9 +727,104 @@ const WT = {
         F.seg('顯示方式', [['contain', '完整顯示'], ['cover', '填滿框框']], c.fit, v => { c.fit = v; ap(true); }),
         F.text('說明文字', c.cap, v => { c.cap = v; ap(); }, '可以不填'));
     }
+  },
+  weather: {
+    name: '天氣空品', icon: '🌤️', w: 30, h: 50,
+    cfg: () => ({ place: WX_PLACES[0][0], name: WX_PLACES[0][0], lat: WX_PLACES[0][1], lon: WX_PLACES[0][2], wx: true, aq: true, tip: true, fc: true }),
+    render(b, wd) {
+      const c = wd.cfg, box = h('div', { class: 'w-card w-wx' });
+      b.append(box);
+      const paint = e => {
+        const d = e.data;
+        if (!d) {
+          box.replaceChildren(h('div', { class: 'wx-msg' }, e.err ? '⚠ 連不上氣象資料' : '讀取天氣中…',
+            e.err ? h('small', null, WX.blocked ? '這個畫面不允許連到氣象網站，請改用班級百寶箱或單機版動態牆' : '請檢查網路，5 分鐘後會再試一次') : null));
+          return;
+        }
+        const cur = d.w.current, day = d.w.daily, a = d.a && d.a.current, [ic, tx] = wxLook(cur.weather_code, cur.is_day);
+        const rain = i => (day.precipitation_probability_max[i] ?? '–') + '%', range = i => Math.round(day.temperature_2m_min[i]) + '～' + Math.round(day.temperature_2m_max[i]) + '°';
+        const kids = [h('div', { class: 'wx-top' }, h('span', null, '📍 ' + (c.name || '天氣')), h('span', { class: 'wx-at' }, hm(new Date(d.at)) + ' 更新' + (e.err ? '（離線）' : '')))];
+        if (c.wx) kids.push(
+          h('div', { class: 'wx-now' }, h('span', { class: 'wx-ic' }, ic), h('span', { class: 'wx-temp' }, Math.round(cur.temperature_2m), h('small', null, '°C')),
+            h('div', { class: 'wx-desc' }, h('b', null, tx), h('span', null, range(0) + 'C'))),
+          h('div', { class: 'wx-info' }, h('span', null, '☔ 降雨 ' + rain(0)), h('span', null, '💧 濕度 ' + cur.relative_humidity_2m + '%'), h('span', null, '🌡️ 體感 ' + Math.round(cur.apparent_temperature) + '°'),
+            day.uv_index_max && day.uv_index_max[0] != null ? h('span', null, '🔆 紫外線 ' + Math.round(day.uv_index_max[0])) : null));
+        if (c.aq && a && a.us_aqi != null) {
+          const L = aqiLv(a.us_aqi);
+          kids.push(h('div', { class: 'wx-aq', style: '--aq:' + L[2] + ';--aqt:' + L[3] }, h('span', { class: 'wx-aqb' }, 'AQI ', h('b', null, Math.round(a.us_aqi)), ' ', L[1]),
+            a.pm2_5 != null ? h('span', { class: 'wx-pm' }, 'PM2.5 ', h('b', null, Math.round(a.pm2_5))) : null), c.tip ? h('div', { class: 'wx-tip' }, '🏃 ' + L[4]) : null);
+        } else if (c.aq) kids.push(h('div', { class: 'wx-tip' }, '空氣品質資料暫時沒有'));
+        if (c.fc) kids.push(h('div', { class: 'wx-fc' }, [1, 2, 3].filter(i => day.time[i]).map(i => h('div', null,
+          h('span', null, i === 1 ? '明天' : i === 2 ? '後天' : '週' + WD[new Date(day.time[i] + 'T00:00').getDay()]), h('span', { class: 'wx-fi' }, wxLook(day.weather_code[i])[0]), h('span', null, range(i)), h('small', null, '☔' + rain(i))))));
+        box.replaceChildren(...kids);
+      };
+      let last = '';
+      return () => {
+        const e = WX.get(c.lat, c.lon), sig = (e.v || 0) + ':' + !!e.data + ':' + !!e.err;
+        if (sig !== last) { last = sig; paint(e); }
+      };
+    },
+    settings(f, wd, ap) {
+      const c = wd.cfg, custom = !WX_PLACES.some(p => p[0] === c.place);
+      f.append(F.row('地點', h('select', { class: 'inp', onchange: e => {
+        const p = WX_PLACES.find(x => x[0] === e.target.value);
+        if (p) { c.place = c.name = p[0]; c.lat = p[1]; c.lon = p[2]; } else c.place = '';
+        ap(true);
+      } }, WX_PLACES.map(p => h('option', { value: p[0], selected: p[0] === c.place }, p[0])), h('option', { value: '', selected: custom }, '自訂地點（填經緯度）'))));
+      if (custom) f.append(F.text('地點名稱', c.name, v => { c.name = v; ap(); }),
+        F.row('緯度、經度',
+          h('input', { class: 'inp num', type: 'number', step: '0.0001', value: c.lat, 'aria-label': '緯度', onchange: e => { c.lat = clamp(+e.target.value || 0, -90, 90); ap(); } }),
+          h('input', { class: 'inp num', type: 'number', step: '0.0001', value: c.lon, 'aria-label': '經度', onchange: e => { c.lon = clamp(+e.target.value || 0, -180, 180); ap(); } })),
+        h('button', { class: 'btn sm', onclick: () => {
+          if (!navigator.geolocation) return toast('這個瀏覽器不能取得位置，請自己填經緯度');
+          navigator.geolocation.getCurrentPosition(p => { c.lat = +p.coords.latitude.toFixed(4); c.lon = +p.coords.longitude.toFixed(4); if (!c.name) c.name = '目前位置'; ap(true); },
+            () => toast('沒有取得位置：請允許瀏覽器使用位置，或自己填經緯度'), { timeout: 10000 });
+        } }, '📍 用這台電腦的位置'));
+      f.append(F.tog('天氣（溫度、降雨機率、濕度、紫外線）', c.wx, v => { c.wx = v; ap(); }),
+        F.tog('空氣品質（AQI、PM2.5）', c.aq, v => { c.aq = v; ap(); }),
+        F.tog('戶外活動建議（照 AQI 分級）', c.tip, v => { c.tip = v; ap(); }),
+        F.tog('明天、後天的預報（框框太矮時會自動藏起來）', c.fc, v => { c.fc = v; ap(); }),
+        h('button', { class: 'btn sm', onclick: () => { WX.get(c.lat, c.lon, true); toast('正在更新天氣…'); } }, '🔄 現在更新'),
+        h('p', { class: 'muted small' }, '資料來自 Open-Meteo，每 20 分鐘自動更新，連不上網路時顯示上一次的資料。天氣是預報模式算出來的；空氣品質是 CAMS 模式推估，AQI 用美國的算法，六級名稱和顏色和環境部空氣品質指標一樣。數字可能和中央氣象署、環境部測站不同。'));
+    }
+  },
+  embed: {
+    name: '影片網頁', icon: '📺', w: 44, h: 54,
+    cfg: () => ({ url: '', title: '', zoom: 100, autoplay: false, loop: false, start: 0, hideBar: false }),
+    render(b, wd) {
+      const c = wd.cfg, s = embedSrc(c);
+      const box = h('div', { class: 'w-card w-embed' + (c.hideBar ? ' nohead' : '') });
+      box.append(h('div', { class: 'wem-head', title: '拖曳這裡移動' }, h('span', { class: 'wem-t' }, c.title || (s ? (s.kind === 'yt' ? '▶ ' : '🌐 ') + s.label : '📺 影片／網頁')),
+        s ? h('a', { class: 'wem-open', href: s.open, target: '_blank', rel: 'noopener', title: '在新分頁打開' }, '↗') : null));
+      b.append(box);
+      if (!s) {
+        box.append(h('div', { class: 'wem-empty' }, h('div', { class: 'wem-big' }, '📺'), h('div', null, c.url ? '這個網址看不懂，請檢查一下' : '貼上 YouTube 影片或網頁的網址'),
+          h('button', { class: 'wbtn', onclick: () => Wall.select(wd.id, true) }, '⚙ 輸入網址')));
+        return null;
+      }
+      const wrap = h('div', { class: 'wem-frame ' + s.kind });
+      if (s.kind === 'web' && +c.zoom && +c.zoom !== 100) wrap.style.setProperty('--z', +c.zoom / 100);
+      box.append(wrap);
+      EmbedKeep.put(wrap, wd.id, s.src, () => h('iframe', { src: s.src, 'data-wid': wd.id, 'data-src': s.src, title: c.title || s.label,
+        allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write', referrerpolicy: 'strict-origin-when-cross-origin' }));
+      return null;
+    },
+    settings(f, wd, ap) {
+      const c = wd.cfg, s = embedSrc(c);
+      f.append(F.row('網址', h('input', { class: 'inp', value: c.url || '', placeholder: '貼上 YouTube 或網頁的網址', onchange: e => { c.url = e.target.value.trim(); ap(true); }, onkeydown: e => { if (e.key === 'Enter') e.target.blur(); } })),
+        h('p', { class: 'muted small' }, !s ? '可以貼：YouTube 影片、播放清單、Shorts、直播；Google 簡報／文件／表單（要先開「知道連結的任何人都能查看」）、Canva、Padlet、Wordwall 等網頁。貼好按 Enter。'
+          : s.kind === 'yt' ? '✅ ' + s.label + '：可以直接在框框裡播放、全螢幕。'
+          : '🌐 網頁：' + s.label + '。有些網站不允許放進別的網頁，框框裡會空白或顯示「拒絕連線」，這時請按標題列右邊的 ↗ 在新分頁打開。'),
+        F.row('標題（可以不填）', h('input', { class: 'inp', value: c.title || '', placeholder: s ? s.label : '', onchange: e => { c.title = e.target.value; ap(); } })));
+      if (s && s.kind === 'yt') f.append(F.tog('自動播放（瀏覽器規定要先靜音）', c.autoplay, v => { c.autoplay = v; ap(); }), F.tog('播完重複播放', c.loop, v => { c.loop = v; ap(); }),
+        F.num('從第幾秒開始', +c.start || 0, 0, 36000, v => { c.start = v; ap(); }, '秒（0＝照網址）'));
+      if (s && s.kind === 'web') f.append(F.seg('網頁縮放（字太大或太小時調整）', [[50, '50%'], [75, '75%'], [100, '100%'], [125, '125%'], [150, '150%']], +c.zoom || 100, v => { c.zoom = v; ap(true); }));
+      f.append(F.tog('鎖定版面時隱藏標題列', c.hideBar, v => { c.hideBar = v; ap(); }),
+        h('p', { class: 'muted small' }, '移動這個小工具：拖曳上面的標題列（影片和網頁本身可以直接點、捲動）。直接打開電腦裡的檔案時，YouTube 會經過班級百寶箱的 GitHub 網站播放，電腦要能上網。'));
+    }
   }
 };
-const WT_ORDER = ['clock', 'exam', 'timer', 'text', 'sched', 'att', 'board', 'traffic', 'work', 'random', 'dice', 'countdown', 'sound', 'image'];
+const WT_ORDER = ['clock', 'exam', 'timer', 'text', 'sched', 'att', 'board', 'weather', 'traffic', 'work', 'random', 'dice', 'countdown', 'sound', 'image', 'embed'];
 
 const WALL_TPL = {
   exam: {
@@ -666,6 +896,10 @@ const Wall = {
     return (WALL_BG[bg.v] || WALL_BG.paper).css;
   },
   draw() {
+    EmbedKeep.depth++; EmbedKeep.stash(this.root);
+    try { this.drawAll(); } finally { EmbedKeep.depth--; EmbedKeep.flush(); }
+  },
+  drawAll() {
     const P = this.page(), locked = !!D.wall.locked;
     this.stopMics(); this.live.clear();
     this.root.replaceChildren();
@@ -712,13 +946,17 @@ const Wall = {
     return el;
   },
   fill(body, wd) {
+    EmbedKeep.stash(body);
     body.replaceChildren(); this.live.delete(wd.id);
-    const T = WT[wd.type]; if (!T) return;
-    if (!wd.cfg) wd.cfg = {};
-    const def = T.cfg();
-    for (const k in def) if (!(k in wd.cfg)) wd.cfg[k] = def[k];
-    const up = T.render(body, wd);
-    if (up) { this.live.set(wd.id, up); try { up(new Date()); } catch (e) { console.error(e); } }
+    const T = WT[wd.type];
+    if (T) {
+      if (!wd.cfg) wd.cfg = {};
+      const def = T.cfg();
+      for (const k in def) if (!(k in wd.cfg)) wd.cfg[k] = def[k];
+      const up = T.render(body, wd);
+      if (up) { this.live.set(wd.id, up); try { up(new Date()); } catch (e) { console.error(e); } }
+    }
+    if (!EmbedKeep.depth) EmbedKeep.flush();
   },
   drawWidget(wd) {
     const el = this.canvas && this.canvas.querySelector('.wd[data-id="' + wd.id + '"]');
@@ -757,6 +995,7 @@ const Wall = {
     if (this.sel !== wd.id) this.select(wd.id);
     if (interactive || D.wall.locked) return;
     e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch (er) { }   // 拖過影片／網頁上方時，滑鼠事件才不會被它吃掉
     const r = this.canvas.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, ox = wd.x, oy = wd.y;
     let moved = false;
     const mv = ev => {
@@ -774,12 +1013,14 @@ const Wall = {
     e.stopPropagation(); e.preventDefault();
     this.select(wd.id);
     const r = this.canvas.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, ow = wd.w, oh = wd.h;
+    el.classList.add('dragging');   // 拉大小時滑鼠經過影片／網頁也收得到
+    try { e.target.setPointerCapture(e.pointerId); } catch (er) { }
     const mv = ev => {
       wd.w = this.snap(clamp(ow + (ev.clientX - sx) / r.width * 100, 6, 100 - wd.x));
       wd.h = this.snap(clamp(oh + (ev.clientY - sy) / r.height * 100, 6, 100 - wd.y));
       this.place(el, wd);
     };
-    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); save(); this.drawWidget(wd); };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); el.classList.remove('dragging'); save(); this.drawWidget(wd); };
     window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
   },
   key(e) {

@@ -1,8 +1,10 @@
 'use strict';
 /* 啟動 */
 
-function boot() {
-  loadData();
+// data：登入後從雲端讀到的班級資料（js/fb.js）；沒有就讀這台電腦瀏覽器裡的
+function boot(data) {
+  if (data) { D = fillDefaults(data, defaultData()); rollDay(); }
+  else loadData();
   Timer.load();
   $('#clsName').onclick = () => Settings.open('class');
   $('#btnSet').onclick = () => Settings.open();
@@ -28,4 +30,5 @@ function boot() {
     }
   } catch (e) { }
 }
-document.addEventListener('DOMContentLoaded', boot);
+// 有設定 Firebase（js/cloudcfg.js）時先登入；觀看者只看動態牆，不會跑到 boot
+document.addEventListener('DOMContentLoaded', () => Gate.run({ local: () => boot(), admin: d => boot(d), title: '班級百寶箱', icon: '🧰' }));
