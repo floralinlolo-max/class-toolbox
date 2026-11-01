@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>班級百寶箱</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/room.css">
+</head>
+<body>
+<header id="top">
+  <button id="nowChip" class="chip-top now" title="打開課表"></button>
+  <button id="teacherChip" class="chip-top tchip" title="老師頭像與稱呼"></button>
+  <button id="clsName" class="cls" title="班級設定"></button>
+  <span id="attChip" class="chip-top plain" hidden></span>
+  <button id="timerChip" class="chip-top timer" title="打開計時器" hidden></button>
+  <button id="examChip" class="chip-top exam" title="改回班上目前使用的課表" hidden>📝 考完了，課表要改回來</button>
+  <span class="grow"></span>
+  <span id="saveState" class="muted small"></span>
+  <button id="btnHide" class="tbtn"></button>
+  <button id="btnSound" class="tbtn"></button>
+  <button id="btnLock" class="tbtn" title="螢幕鎖">🔒</button>
+  <button id="btnFull" class="tbtn" title="全螢幕">⛶</button>
+  <button id="btnSet" class="tbtn" title="班級設定">⚙ 設定</button>
+</header>
+<main id="main">
+  <section id="board" class="board"></section>
+  <div id="banner" hidden></div>
+  <section id="seats"></section>
+</main>
+<aside id="side" hidden></aside>
+<nav id="dock"></nav>
+<div id="layer"></div>
+<div id="toasts"></div>
+<script src="js/core.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/class.js"></script>
+<script src="js/tools1.js"></script>
+<script src="js/tools2.js"></script>
+<script src="js/art.js"></script>
+<script src="js/scenery.js"></script>
+<script src="js/toon.js"></script>
+<script src="js/room.js"></script>
+<script src="js/wall.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# 只發布網頁本身；工作日誌是內部紀錄，雲端動態牆是 claude.ai 專用版本
+工作日誌.md
+雲端動態牆/
+*.tmp
+Thumbs.db
+desktop.ini

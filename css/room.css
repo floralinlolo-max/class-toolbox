@@ -1,0 +1,50 @@
+/* 3D 教室：立體人物與椅子（2026-10-31 第八筆加的；其他教室樣式在 app.css） */
+.r-kid > svg, .r-herald > svg, .r-tsvg > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.r-tsvg { position: absolute; inset: 0; }
+.r-herald > svg { position: absolute; left: 0; top: 0; }
+.r-view.fine .r-kid[data-id] > svg, .r-view.fine .r-herald > svg { transform-origin: 50% 80%; }
+/* 老師的右手：平常放下，稱讚同學時舉起來揮手 */
+.r-teacher .arm2 { display: none; }
+.r-teacher.saying .arm { display: none; }
+.r-teacher.saying .arm2 { display: inline; }
+.r-teacher.walk .r-tsvg > svg { animation: walkBob .25s ease-in-out infinite alternate; }
+.r-teacher .r-say { bottom: 72%; }
+/* 椅子：座墊、椅背（下面是兩支後腳）、前腳 */
+.r-seat { background: #d9a066; border: 3px solid #b97a40; border-radius: 6px; cursor: pointer; }
+.r-chairback { cursor: pointer;
+  background: linear-gradient(#c98b4f, #c98b4f) top / 100% 32px no-repeat,
+    linear-gradient(#8e98a1, #8e98a1) 3px 32px / 5px 100% no-repeat, linear-gradient(#8e98a1, #8e98a1) right 3px top 32px / 5px 100% no-repeat;
+  border-radius: 7px 7px 0 0; }
+.r-chairlegs { pointer-events: none;
+  background: linear-gradient(#8e98a1, #8e98a1) 2px 0 / 5px 100% no-repeat, linear-gradient(#8e98a1, #8e98a1) right 2px top 0 / 5px 100% no-repeat; }
+/* 第九筆：日系清新配色（牆面、牆裙、窗框、窗台照 ChatGPT 建議的色碼） */
+.r-wall { --wain: #d9c3a2; --wallc: #f5eedf; background: linear-gradient(to top, #b89a72 0 6px, var(--wain) 6px 92px, #fff9ee 92px 98px, var(--wallc) 98px); }
+.r-wall.side { --wain: #d2bb98; --wallc: #efe6d4; }
+/* 兩側的大片窗戶：季節風景（橫向重複）＋時段天色＋白色窗框 */
+.r-wband { position: absolute; top: 34px; height: 160px; border: 8px solid #fff9ee; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #d5c8b5; }
+.r-wview { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; background-position: left bottom; }
+.r-wsky, .r-wframe { position: absolute; inset: 0; }
+/* 立體窗台（木板上面和前緣） */
+.r-sill { background: #c79565; box-shadow: inset 0 3px 0 #e7bf8d; }
+.r-sill-edge { background: #b4834f; }
+.r-view.hide-l .sl-l, .r-view.hide-r .sl-r { visibility: hidden; }
+/* 陽光：地上的光斑、斜斜的光束、整體色調 */
+.r-sun, .r-beam { pointer-events: none; }
+.r-tint { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+/* 時鐘掛在右邊冷氣和窗戶中間、和冷氣一樣高（冷氣 top 62、高 44）；後牆太窄放不下時才掛在冷氣下面 */
+.r-clock.side { top: 53px; width: 62px; height: 62px; }
+.r-clock.side.dg { top: 66px; width: 86px; height: 36px; border-width: 3px; }
+.r-clock.side.dg b { font-size: 20px; }
+.r-clock.under { top: 150px; width: 62px; height: 62px; }
+.r-clock.under.dg { top: 158px; width: 106px; height: 40px; }
+.r-clock.under.dg b { font-size: 24px; }
+/* 老師可以拖 */
+.r-teacher { cursor: grab; }
+.r-view.dragging .r-teacher { cursor: grabbing; }
+/* 名牌小一點；從側面、後面看時在頭頂 */
+.r-lw .seat { box-shadow: 0 1px 4px rgba(40, 30, 10, .22); }
+
+/* 舉牌的牌子（3D 平面，背面是空白木板） */
+.r3.r-hsign { position: absolute; left: 0; top: 0; padding: 6px 10px; background: #fffdf3; border: 5px solid #e2a54d; border-radius: 8px; display: grid; place-items: center;
+  text-align: center; font-family: var(--kai); font-weight: 700; color: #6b4a1f; line-height: 1.2; box-shadow: none; cursor: pointer; }
+.r3.r-hsign.back { background: #d8b083; border-color: #b07a43; cursor: default; }
