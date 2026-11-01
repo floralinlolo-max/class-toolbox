@@ -387,10 +387,15 @@ const Snd = {
     else if (k === 'alarm') { for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) n.push([1046, r * 0.9 + i * 0.14, 0.08, 'square', 0.07]); }
     else if (k === 'ding') n.push([1046, 0, 0.45], [2093, 0, 0.3, 'sine', 0.05]);
     else if (k === 'bell') { for (const s of [0, 0.6, 1.2]) n.push([880, s, 0.5], [1760, s, 0.35, 'sine', 0.06]); }
+    else if (k === 'marimba') { for (let r = 0; r < 2; r++) [523, 659, 784, 1046, 784, 1046].forEach((f, i) => n.push([f, r * 1.3 + i * 0.16, 0.35, 'triangle', 0.22])); }
+    else if (k === 'musicbox') [[1046, 0], [1318, .3], [1568, .6], [2093, .9], [1568, 1.2], [1760, 1.5], [1568, 1.8], [1318, 2.4]].forEach(([f, s]) => n.push([f, s, 0.9, 'sine', 0.16], [f * 2, s, 0.25, 'sine', 0.03]));
+    else if (k === 'beep') { for (let i = 0; i < 4; i++) n.push([988, i * 0.5, 0.3, 'sine', 0.2]); }
+    else if (k === 'bird') { for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) n.push([2600 + i * 220 + (r % 2) * 180, r * 0.7 + i * 0.07, 0.06, 'sine', 0.12]); }
+    else if (k === 'fanfare') [[523, 0, .18], [523, .2, .12], [523, .34, .12], [784, .5, .6], [659, 1.15, .18], [784, 1.35, .9]].forEach(([f, s, d]) => n.push([f, s, d, 'triangle', 0.2], [f * 2, s, d, 'sine', 0.04]));
     if (n.length) this.play(n, true);
   }
 };
-const SOUNDS = [['bell', '鈴鈴鈴'], ['chime', '學校鐘聲'], ['dingdong', '叮咚'], ['alarm', '鬧鐘'], ['ding', '叮一聲'], ['none', '不響']];
+const SOUNDS = [['bell', '鈴鈴鈴'], ['chime', '學校鐘聲'], ['dingdong', '叮咚'], ['alarm', '鬧鐘'], ['ding', '叮一聲'], ['marimba', '木琴'], ['musicbox', '音樂盒'], ['beep', '嗶嗶嗶'], ['bird', '小鳥'], ['fanfare', '號角'], ['none', '不響']];
 
 /* ---------- 圖片（IndexedDB） ---------- */
 const ImgDB = {

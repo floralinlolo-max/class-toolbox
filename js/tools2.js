@@ -353,7 +353,8 @@ const Board = {
     const col = s => { let out = '', at = 0; s.replace(/\[(紅|黃|藍|綠)\]([\s\S]*?)\[\/\]/g, (m, c, x, i) => { out += t(s.slice(at, i)) + '<span class="ck ck-' + map[c] + '">' + t(x) + '</span>'; at = i + m.length; }); return out + t(s.slice(at)); };
     return String(text).split('\n').map(l => /^#/.test(l) ? '<div class="bd-h">' + col(l.replace(/^#\s*/, '')) + '</div>' : '<div>' + (col(l) || '&nbsp;') + '</div>').join('');
   },
-  render(big) {
+  // info：要不要在聯絡簿前面寫倒數、應到實到、值日生（undefined＝不寫，例如 3D 教室的小黑板；{ att } 可指定要不要應到實到）
+  render(big, info) {
     const b = D.board, v = !!b.vertical;
     const tx = s => v ? h('span', { innerHTML: vtHTML(s) }) : s;
     const el = h('div', { class: 'bd' + (v ? ' vert' : '') + (big ? ' big' : '') });
@@ -364,18 +365,35 @@ const Board = {
       items.forEach((it, i) => el.append(h('div', { class: 'bd-it' }, h('span', { class: 'bd-n' }, tx((i + 1) + '.')), h('span', { class: 'bd-cat c-' + it.cat }, CATS[it.cat] || ''), tx(' ' + it.text))));
     } else if (b.free.trim()) el.innerHTML = this.freeHTML(b.free, v);
     else if (!big) el.append(h('div', { class: 'bd-empty' }, '（點這裡在黑板上寫字）'));
+    if (info) el.prepend(...this.infoLines(info.att));
     return el;
   },
-  // 黑板最右邊直寫的：倒數、值日生、應到實到，一項一直行、由右往左排（放進 .b-side；att＝false 不放應到實到）
-  sideItems(att = D.info.attPos !== 'none') {
-    const out = [], duty = this.dutyToday(), c = D.board.countdown, v = s => h('span', { innerHTML: vtHTML(s) }), big = s => h('span', { class: 'b-big' }, v(s));
+  // 聯絡簿前面的資訊（有開才寫）：第一行倒數、空幾格、應到實到，第二行值日生，再空一行；直書時就是最右邊的兩直行
+  // att：true＝照今天點名、false＝不寫、[應到, 實到]＝直接用這兩個數字（動態牆跟「應到實到」小工具連動）
+  infoLines(att = D.info.attPos !== 'none') {
+    const v = !!D.board.vertical, tx = s => v ? h('span', { innerHTML: vtHTML(s) }) : String(s), num = s => h('em', null, tx(s));
+    const c = D.board.countdown, duty = this.dutyToday(), first = [], out = [];
     if (this.countdownText()) {
       const n = daysBetween(dateKey(), c.date);
-      out.push(h('div', { class: 'b-cd' }, n > 1 ? [h('b', null, v(c.name)), h('small', null, '還有'), big(n), h('small', null, '天')] : [h('small', null, n ? '明天' : '今天'), h('b', null, v(c.name))]));
+      first.push(h('span', { class: 'b-cd' }, n > 1 ? [h('b', null, tx(c.name)), '還有', num(n), '天'] : [n ? '明天' : '今天', h('b', null, tx(c.name))]));
+    }
+    const A = Array.isArray(att) ? att : att && D.students.length ? [D.students.length, presentList().length] : null;
+    if (A) first.push(h('span', { class: 'b-att' }, h('span', { class: 'b-tag' }, '應到'), num(A[0]), '　', h('span', { class: 'b-tag' }, '實到'), num(A[1])));
+    if (first.length) out.push(h('div', { class: 'bd-info' }, first));
+    if (duty.length) out.push(h('div', { class: 'bd-info' }, h('span', { class: 'b-tag' }, '值日生'), num(duty.map(s => s.no).join('、')), '號'));
+    if (out.length) out.push(h('div', { class: 'bd-gap' }));
+    return out;
+  },
+  // 主畫面黑板收小時，倒數、值日生、應到實到改成右邊一橫列
+  sideBox() {
+    const out = [], duty = this.dutyToday(), c = D.board.countdown, big = s => h('span', { class: 'b-big' }, s);
+    if (this.countdownText()) {
+      const n = daysBetween(dateKey(), c.date);
+      out.push(h('div', { class: 'b-cd' }, n > 1 ? [h('b', null, c.name), h('small', null, '還有'), big(n), h('small', null, '天')] : [h('small', null, n ? '明天' : '今天'), h('b', null, c.name)]));
     }
     if (duty.length) out.push(h('div', { class: 'b-duty' }, h('small', { class: 'b-tag' }, '值日生'), big(duty.map(s => s.no).join('、')), h('small', null, '號')));
-    if (att && D.students.length) out.push(h('div', { class: 'b-att' }, h('span', null, h('small', null, '應到'), big(D.students.length)), h('span', null, h('small', null, '實到'), big(presentList().length))));
-    return out;
+    if (D.info.attPos !== 'none' && D.students.length) out.push(h('div', { class: 'b-att' }, h('small', null, '應到'), big(D.students.length), h('small', null, ' 實到'), big(presentList().length)));
+    return h('div', { class: 'b-side' }, out);
   },
   schoolDays(a, b) {
     let x = parseKey(a), y = parseKey(b), sign = 1;
@@ -384,8 +402,13 @@ const Board = {
     for (;;) { d.setDate(d.getDate() + 1); if (d > y) break; const w = d.getDay(); if (w >= 1 && w <= 5) n++; }
     return n * sign;
   },
+  // 值日生輪的名單：班級名單；還沒有名單時（例如雲端動態牆沒匯入名單）用座號 1～du.size 號
+  dutyRoster() {
+    const L = roster();
+    return L.length ? L : Array.from({ length: D.board.duty.size || 30 }, (_, i) => ({ id: 'no' + (i + 1), no: i + 1, name: '' }));
+  },
   dutyToday() {
-    const du = D.board.duty, L = roster();
+    const du = D.board.duty, L = this.dutyRoster();
     if (!du.on || !L.length) return [];
     const k = this.schoolDays(du.anchorDate, dateKey()), n = L.length, out = [];
     const takeFrom = i => { for (let j = 0; j < n; j++) { const s = L[((i + j) % n + n) % n]; if (!isAbsent(s.id) && !out.includes(s)) return s; } return null; };
@@ -411,8 +434,8 @@ const Board = {
     const b = D.board;
     const prev = h('div', { class: 'bd-prev' });
     const drawPrev = () => {
-      const box = h('div', { class: 'bd-box' }, this.render(true));
-      prev.replaceChildren(box, h('div', { class: 'b-side bd-sideP' }, this.sideItems()));
+      const box = h('div', { class: 'bd-box' }, this.render(true, {}));
+      prev.replaceChildren(box);
       requestAnimationFrame(() => { const inner = box.firstChild; if (inner) fitText(box, inner, 0, 64); });
     };
     const left = h('div', { class: 'bed-left' });
@@ -444,21 +467,27 @@ const Board = {
           h('button', { class: 'del', title: '刪除', onclick: async () => { if (await ask('刪除常用板書「' + sv.name + '」？', '刪除', { danger: true })) { b.saved = b.saved.filter(x => x !== sv); save(); c.rebuild(); } } }, '×'))),
           h('button', { class: 'chip ghost', onclick: async () => { if (!b.free.trim()) return toast('黑板上還沒有字'); if (b.saved.length >= 20) return toast('最多 20 張'); const n = await askText('存成常用板書', '取個名字，例如：早自習、午餐提醒、放學準備'); if (n && n.trim()) { b.saved.push({ id: uid(), name: n.trim(), text: b.free }); save(); c.rebuild(); } } }, '＋ 把目前的內容存成常用板書')));
     }
-    // 黑板最右邊也寫
+    // 聯絡簿前面也寫
     const du = b.duty, cd = b.countdown;
-    const side = h('div', { class: 'bed-side' }, h('div', { class: 'lbl' }, '黑板最右邊也寫（直式）'),
+    const side = h('div', { class: 'bed-side' }, h('div', { class: 'lbl' }, '聯絡簿前面也寫（橫書在最上面，直書在最右邊）'),
       h('label', { class: 'tog' }, h('input', { type: 'checkbox', checked: du.on, onchange: e => { du.on = e.target.checked; save(); c.rebuild(); } }), h('span', null, '值日生')));
     if (du.on) {
-      const today = this.dutyToday();
+      const today = this.dutyToday(), L = this.dutyRoster(), at = s => L.findIndex(x => x.no === s.no);
+      if (!roster().length) {
+        const openRoster = typeof Roster === 'object' ? () => Roster.open() : typeof Settings === 'object' ? () => Settings.open('roster') : null;
+        side.append(h('div', { class: 'row wrap' }, h('span', { class: 'muted small' }, '還沒有班級名單，先用座號輪：'), '全班',
+          h('input', { class: 'inp num', type: 'number', min: 1, max: 60, value: du.size || 30, onchange: e => { du.size = clamp(Math.round(+e.target.value) || 30, 1, 60); du.fixed = du.fixed.filter(n => n <= du.size); save(); c.rebuild(); } }), '號',
+          openRoster ? h('button', { class: 'btn sm', onclick: () => { c.close(); openRoster(); } }, '👥 建立班級名單') : null));
+      }
       side.append(h('div', { class: 'row wrap' }, '怎麼輪：', h('div', { class: 'seg' },
         h('button', { class: du.mode === 'seq' ? 'on' : '', onclick: () => { du.mode = 'seq'; save(); c.rebuild(); } }, '照座號連著輪'),
         h('button', { class: du.mode === 'fixed' ? 'on' : '', onclick: () => { du.mode = 'fixed'; du.anchorDate = dateKey(); du.anchorIdx = 0; save(); c.rebuild(); } }, '指定座號'))));
       if (du.mode === 'seq') {
-        side.append(h('div', { class: 'row wrap' }, '每天', h('select', { class: 'inp', onchange: e => { const first = this.dutyToday()[0]; du.count = +e.target.value; if (first) { du.anchorDate = dateKey(); du.anchorIdx = roster().indexOf(first); } save(); c.rebuild(); } }, Array.from({ length: DUTY_MAX }, (_, k) => k + 1).map(n => h('option', { value: n, selected: du.count === n }, n))), '位　今天從',
-          h('select', { class: 'inp', onchange: e => { du.anchorDate = dateKey(); du.anchorIdx = +e.target.value; save(); c.rebuild(); } }, roster().map((s, i) => h('option', { value: i, selected: today[0] === s }, pad(s.no) + ' 號'))), '開始'));
+        side.append(h('div', { class: 'row wrap' }, '每天', h('select', { class: 'inp', onchange: e => { const first = this.dutyToday()[0]; du.count = +e.target.value; if (first) { du.anchorDate = dateKey(); du.anchorIdx = at(first); } save(); c.rebuild(); } }, Array.from({ length: DUTY_MAX }, (_, k) => k + 1).map(n => h('option', { value: n, selected: du.count === n }, n))), '位　今天從',
+          h('select', { class: 'inp', onchange: e => { du.anchorDate = dateKey(); du.anchorIdx = +e.target.value; save(); c.rebuild(); } }, L.map((s, i) => h('option', { value: i, selected: !!today[0] && today[0].no === s.no }, pad(s.no) + ' 號'))), '開始'));
       } else {
         side.append(h('div', { class: 'muted small' }, '點座號選今天的值日生（最多 ' + DUTY_MAX + ' 位），之後每個上課日每個號碼各換下一號。'),
-          h('div', { class: 'reasons' }, roster().map(s => h('button', { class: 'chip' + (du.fixed.includes(s.no) ? ' on' : ''), onclick: () => {
+          h('div', { class: 'reasons' }, L.map(s => h('button', { class: 'chip' + (du.fixed.includes(s.no) ? ' on' : ''), onclick: () => {
             if (du.fixed.includes(s.no)) du.fixed = du.fixed.filter(x => x !== s.no); else if (du.fixed.length < DUTY_MAX) du.fixed.push(s.no); else return toast('值日生最多 ' + DUTY_MAX + ' 位');
             du.anchorDate = dateKey(); du.anchorIdx = 0; save(); c.rebuild();
           } }, pad(s.no)))));
@@ -489,7 +518,7 @@ const Board = {
         mode === 'free' && b.saved.length ? h('select', { class: 'inp sm', onchange: e => { const sv = b.saved.find(x => x.id === e.target.value); if (sv) { b.free = sv.text; save(); refresh(); c.rebuild(); } } },
           h('option', { value: '' }, '換板書…'), b.saved.map(sv => h('option', { value: sv.id }, sv.name))) : null,
         h('button', { class: 'btn sm', onclick: () => { c.close(); this.edit(); } }, '✎ 編輯')];
-      c.body.append(h('div', { class: 'bd-stage' }, h('div', { class: 'bd-box' }, this.render(true)), h('div', { class: 'b-side bd-sideP' }, this.sideItems())));
+      c.body.append(h('div', { class: 'bd-stage' }, h('div', { class: 'bd-box' }, this.render(true, {}))));
       requestAnimationFrame(fit);
       if (onR) window.removeEventListener('resize', onR);
       onR = () => fit(); window.addEventListener('resize', onR);

@@ -48,21 +48,25 @@ button { font: inherit; color: inherit; }
   background: var(--board); border: 7px solid var(--frame); border-radius: 10px; color: var(--chalk); font-family: var(--kai); }
 .board.small { height: 8vh; min-height: 50px; }
 .b-main { overflow: hidden; padding: 6px 14px; cursor: pointer; min-width: 0; }
-/* 黑板最右邊：倒數、值日生、應到實到直寫，一項一直行、由右往左（Board.sideItems；黑板、投影、預覽、動態牆共用） */
-.b-side { writing-mode: vertical-rl; display: flex; flex-direction: column; gap: .45em; line-height: 1.25; white-space: normal; padding: 6px 10px 18px 6px; font-size: 18px; }
+/* 倒數、應到實到、值日生寫在聯絡簿前面（Board.infoLines）：第一行倒數＋應到實到，第二行值日生，再空一行 */
+/* 比聯絡簿的字小一號；段考、應到、實到、值日生用橘色粉筆，和聯絡簿標題的黃色分開 */
+.bd-info, .bd-gap { font-size: .75em; }
+.bd-info { white-space: nowrap; }
+.bd-info em { font-style: normal; font-weight: 800; margin-inline: .15em; }
+.bd-info .b-cd + .b-att { margin-inline-start: 1.6em; }
+.bd-gap::before { content: '\a0'; }
+.b-cd b, .b-tag { color: #ffaa6e; }
+/* 主畫面黑板收小時：右邊一橫列（Board.sideBox） */
+.b-side { display: flex; align-items: center; gap: 12px; padding: 0 26px 0 6px; font-size: 15px; white-space: nowrap; }
+.b-side small { font-size: .8em; opacity: .9; }
+.b-big { font-size: 1.15em; font-weight: 700; margin: 0 .1em; }
 .b-side:empty { padding: 0; }
-.b-side small { font-size: .72em; opacity: .9; }
-.b-big { font-size: 1.3em; font-weight: 700; }
-.b-cd b { color: var(--chalk-y); font-size: 1.1em; }
-.b-tag { color: var(--chalk-y); }
-.b-att > span + span { margin-inline-start: .5em; }
-.board.small .b-side { writing-mode: horizontal-tb; flex-direction: row; align-items: center; gap: 12px; padding: 0 26px 0 6px; font-size: 15px; }
-.board.small .b-big { font-size: 1.15em; }
 .b-min { position: absolute; right: 2px; bottom: 2px; background: rgba(255, 255, 255, .12); color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 0 6px; }
 
 /* 黑板上的字 */
 .bd { width: 100%; line-height: 1.35; }
-.bd.vert { writing-mode: vertical-rl; height: 100%; width: auto; display: inline-block; }
+/* 直書從黑板最右邊開始寫（一直行一直行往左） */
+.bd.vert { writing-mode: vertical-rl; height: 100%; width: fit-content; display: block; margin-left: auto; }
 .bd-h { color: var(--chalk-y); font-weight: 700; }
 .bd-it { margin: .1em 0; white-space: nowrap; }
 .bd-n { color: #b9c4bf; margin-inline-end: .25em; }
@@ -583,8 +587,6 @@ select.inp { width: auto; }
 .bed-right { position: sticky; top: 0; align-self: start; }
 .bd-prev { background: var(--board); border: 6px solid var(--frame); border-radius: 10px; height: 46vh; overflow: hidden; color: var(--chalk); font-family: var(--kai); padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
 .bd-prev .bd-box { padding: 0; }
-.bd-prev .bd-sideP { font-size: 2.4vh; padding: 0 0 0 1vw; }
-.bd-prev .bd-sideP:empty { padding: 0; }
 .ct-row { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
 .ct-row select.inp { width: 5.5em; flex: none; }
 .ct-row .inp:not(select) { flex: 1; }
@@ -602,8 +604,6 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .boardp .lbody { padding: 0 !important; }
 .bd-stage { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; background: var(--board); color: var(--chalk); font-family: var(--kai); border: 14px solid var(--frame); min-height: 0; }
 .bd-box { overflow: hidden; padding: 2vh 2vw; min-width: 0; min-height: 0; }
-.bd-sideP { padding: 2vh 2vw 2vh 1vw; font-size: 4.5vh; }
-.bd-sideP:empty { padding: 0; }
 
 /* ---------- 課表、大時鐘 ---------- */
 .sched th small { display: block; color: var(--muted); font-weight: 400; font-size: .6em; }
@@ -733,7 +733,12 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .wt-bar i { display: block; height: 100%; background: var(--pri); }
 .w-timer.warn .wt-dig { color: #d18a00; }
 .w-timer.end .wt-dig { color: #e04848; animation: blink 1s steps(2) infinite; }
-.wt-btns { display: flex; gap: 2cqw; }
+.wt-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 2cqmin; }
+.w-timer .wbtn { padding: 4px 10px; }
+.wt-grp { display: flex; gap: 2cqmin; }
+.w-timer .wbtn.pri { background: var(--pri); border-color: var(--pri); color: #fff; }
+.wt-set { display: flex; align-items: center; gap: 4px; font-size: max(12px, min(4.5cqmin, 17px)); color: #5d6871; }
+.wt-set .inp.num { width: 3.6em; padding: 2px 4px; font-size: inherit; text-align: center; }
 .wt-dial { flex: 1; min-height: 0; aspect-ratio: 1; max-width: 100%; }
 .wt-dial svg { display: block; width: 100%; height: 100%; }
 .w-timer.ana { gap: 1cqh; }
@@ -769,8 +774,6 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .w-att b { font-size: 1.5em; margin: 0 .1em; }
 .w-board { background: var(--board); border: 6px solid var(--frame); color: var(--chalk); font-family: var(--kai); display: grid; grid-template-columns: minmax(55%, 1fr) auto; align-items: stretch; justify-content: stretch; gap: 0; padding: 2cqmin 3cqmin; }
 .wb-main { overflow: hidden; min-width: 0; min-height: 0; }
-.wb-side { padding: 0 0 0 2.5cqmin; font-size: max(12px, 5.5cqmin); }
-.wb-side:empty { padding: 0; }
 .w-traffic { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; gap: 2cqh; }
 .wtl-box { flex: 1; min-height: 0; aspect-ratio: 1 / 2.6; max-width: 100%; background: #2b3138; border-radius: 999px; padding: 6% 0; display: flex; flex-direction: column; justify-content: space-around; align-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); }
 .wtl { width: 72%; aspect-ratio: 1; border-radius: 50%; border: 0; cursor: pointer; opacity: .2; }
@@ -780,7 +783,13 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .w-work, .w-dice { cursor: pointer; }
 .ww-i { font-size: min(52cqh, 56cqw); line-height: 1.1; }
 .ww-t { font-size: min(14cqh, 13cqw); font-weight: 800; }
-.wr-name { font-size: min(22cqh, 12cqw); font-weight: 900; text-align: center; line-height: 1.2; }
+/* 抽籤：字級由 drawShow() 照字數算，抽中時變紅並跳一下 */
+.w-random { gap: 3cqh; }
+.wr-name { font-size: min(30cqh, 20cqw); font-weight: 900; text-align: center; line-height: 1.15; }
+.wr-name > div { white-space: nowrap; }
+.wr-name.win { color: #e04848; animation: wrPop .5s ease-out; }
+@keyframes wrPop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.w-random .wbtn.yellow { font-size: max(15px, min(8cqmin, 30px)); padding: .3em 1.2em; }
 .wr-hint { font-size: max(13px, 6cqmin); color: #6c7680; }
 .wdc-faces { display: flex; gap: 4cqw; font-size: min(72cqh, 38cqw); line-height: 1; color: #25313b; }
 .wcd-t { font-size: min(24cqh, 9cqw); font-weight: 900; text-align: center; }

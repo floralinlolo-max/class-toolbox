@@ -36,7 +36,7 @@ const wTimer = {
     }
   },
   reset(c) { c.running = false; c.remain = c.total; c.elapsed = 0; c.rang = false; },
-  add(c, s) { c.rang = false; if (c.running) c.endAt += s * 1000; else c.remain = Math.max(0, c.remain + s); c.total = Math.max(c.total, c.running ? (c.endAt - Date.now()) / 1000 : c.remain); },
+  add(c, s) { c.rang = false; if (c.running) c.endAt = Math.max(Date.now(), c.endAt + s * 1000); else c.remain = Math.max(0, c.remain + s); c.total = Math.max(c.total, c.running ? (c.endAt - Date.now()) / 1000 : c.remain); },
   set(c, s) { c.total = s; c.remain = s; c.running = false; c.rang = false; c.elapsed = 0; }
 };
 
@@ -70,12 +70,29 @@ function fitExam(C) {
 function fmtClock(m) { const s = Math.round(m * 60); return pad(Math.floor(s / 3600) % 24) + ':' + pad(Math.floor(s % 3600 / 60)); }
 const FLOW_ICONS = ['📖', '✏️', '🔢', '🌏', '🔬', '🗣️', '🎨', '🎵', '⚽', '💻', '📝', '☕', '🧹', '🍱'];
 const flowOn = c => !!c.flowAt && dateKey(new Date(c.flowAt)) === dateKey();
+// 聯絡簿小工具要寫的應到實到 [應到, 實到]：先找這一頁、再找別頁的「應到實到」小工具，其次是有顯示人數的考試面板，都沒有就照今天點名
+function wallAtt() {
+  const P = Wall.page(), pages = [P, ...D.wall.pages.filter(p => p !== P)].filter(Boolean), roll = () => [D.students.length, presentList().length];
+  for (const p of pages) {
+    const a = p.widgets.find(w => w.type === 'att'), e = p.widgets.find(w => w.type === 'exam' && w.cfg.showAtt);
+    if (a) return a.cfg.auto === false ? [+a.cfg.expected || 0, +a.cfg.actual || 0] : roll();
+    if (e) return e.cfg.attAuto === false ? [+e.cfg.expected || 0, +e.cfg.actual || 0] : roll();
+  }
+  return D.students.length ? roll() : null;
+}
 // 抽籤小工具的名單：班上今天出席的同學、自己輸入的名單、或座號範圍（每一項 {id, t}）
 function drawPool(c) {
   const src = c.src || 'class';
   if (src === 'list') return [...new Set(String(c.names || '').split(/[\n,，、]/).map(x => x.trim()).filter(Boolean))].map(t => ({ id: 'n:' + t, t }));
   if (src === 'nums') { const a = Math.min(c.from || 1, c.to || 30), b = Math.max(c.from || 1, c.to || 30); return Array.from({ length: b - a + 1 }, (_, i) => ({ id: 'no:' + (a + i), t: (a + i) + ' 號' })); }
-  return presentList().map(s => ({ id: s.id, t: nameOf(s) }));
+  return presentList().map(s => ({ id: s.id, t: s.name ? pad(s.no) + '\n' + s.name : pad(s.no) + ' 號' }));
+}
+// 抽籤結果越大越好：照最長那一行的字數和行數算字級（半形字算半個）
+function drawShow(el, x, win) {
+  const lines = String(x ? x.t : '？').split('\n'), n = Math.max(1.5, ...lines.map(l => [...l].reduce((a, ch) => a + (/[\x00-\xff]/.test(ch) ? .55 : 1), 0)));
+  el.replaceChildren(...lines.map(l => h('div', null, l)));
+  el.style.fontSize = 'min(' + (62 / lines.length).toFixed(1) + 'cqh, ' + (86 / n).toFixed(1) + 'cqw)';
+  el.classList.toggle('win', !!win);
 }
 
 /* ---------- 設定表單小工具 ---------- */
@@ -256,21 +273,29 @@ const WT = {
   },
   timer: {
     name: '計時器', icon: '⏳', w: 26, h: 36,
-    cfg: () => ({ mode: 'down', total: 300, remain: 300, running: false, endAt: 0, startAt: 0, elapsed: 0, rang: false, title: '' }),
+    cfg: () => ({ mode: 'down', total: 300, remain: 300, running: false, endAt: 0, startAt: 0, elapsed: 0, rang: false, title: '', sound: 'bell' }),
     render(b, wd) {
-      const c = wd.cfg, dig = h('div', { class: 'wt-dig' }), bar = h('i'), A = c.face === 'analog' ? timerDial(c.mode === 'down') : null;   // face：數字／指針
+      const c = wd.cfg, down = c.mode === 'down', dig = h('div', { class: 'wt-dig' }), bar = h('i'), A = c.face === 'analog' ? timerDial(down) : null;   // face：數字／指針
       const redraw = () => { save(); setTimeout(() => Wall.drawWidget(wd), 0); };
+      // 沒在跑的倒數計時，小工具上直接填幾分幾秒
+      const num = (v, max) => h('input', { class: 'inp num', type: 'number', min: 0, max, value: v, onchange: () => { const t = clamp(+mm.value || 0, 0, 600) * 60 + clamp(+ss.value || 0, 0, 59); if (t > 0) { wTimer.set(c, t); redraw(); } } });
+      const mm = num(Math.floor(c.total / 60), 600), ss = num(Math.round(c.total % 60), 59);
       const box = h('div', { class: 'w-card w-timer' + (A ? ' ana' : '') },
         c.title ? h('div', { class: 'wt-title' }, c.title) : null, A ? h('div', { class: 'wt-dial' }, A.el) : null, dig,
-        c.mode === 'down' && !A ? h('div', { class: 'wt-bar' }, bar) : null,
+        down && !A ? h('div', { class: 'wt-bar' }, bar) : null,
         h('div', { class: 'wt-btns' },
-          h('button', { class: 'wbtn', title: c.running ? '暫停' : '開始', onclick: () => { wTimer.toggle(c); redraw(); } }, c.running ? '⏸' : '▶'),
-          h('button', { class: 'wbtn', title: '重來', onclick: () => { wTimer.reset(c); redraw(); } }, '↺'),
-          c.mode === 'down' ? h('button', { class: 'wbtn', title: '加一分鐘', onclick: () => { wTimer.add(c, 60); redraw(); } }, '+1分') : null));
+          h('span', { class: 'wt-grp' },
+            h('button', { class: 'wbtn' + (c.running ? '' : ' pri'), title: '開始（空白鍵）', disabled: c.running, onclick: () => { wTimer.toggle(c); redraw(); } }, '▶'),
+            h('button', { class: 'wbtn' + (c.running ? ' pri' : ''), title: '暫停（空白鍵）', disabled: !c.running, onclick: () => { wTimer.toggle(c); redraw(); } }, '⏸'),
+            h('button', { class: 'wbtn', title: '重來', onclick: () => { wTimer.reset(c); redraw(); } }, '↺')),
+          down ? h('span', { class: 'wt-grp' },
+            h('button', { class: 'wbtn', title: '減一分鐘', onclick: () => { wTimer.add(c, -60); redraw(); } }, '−1分'),
+            h('button', { class: 'wbtn', title: '加一分鐘', onclick: () => { wTimer.add(c, 60); redraw(); } }, '+1分')) : null),
+        down && !c.running ? h('div', { class: 'wt-set' }, mm, '分', ss, '秒') : null);
       b.append(box);
       return () => {
         const v = wTimer.val(c);
-        if (c.mode === 'down' && c.running && v <= 0) { c.running = false; c.remain = 0; c.rang = true; Snd.bell(); redraw(); return; }
+        if (down && c.running && v <= 0) { c.running = false; c.remain = 0; c.rang = true; Snd.ring(c.sound || 'bell'); redraw(); return; }
         dig.textContent = fmtSec(c.mode === 'down' ? Math.max(0, v) : Math.floor(v));
         box.classList.toggle('warn', c.mode === 'down' && c.running && v <= 60);
         box.classList.toggle('end', c.mode === 'down' && c.rang);
@@ -286,7 +311,11 @@ const WT = {
         F.seg('種類', [['down', '倒數計時'], ['up', '碼錶']], c.mode, v => { c.mode = v; wTimer.reset(c); ap(true); }),
         F.seg('樣式', [['digital', '數字'], ['analog', '指針']], c.face || 'digital', v => { c.face = v; ap(true); }));
       if (c.mode === 'down') f.append(F.row('時間', h('div', { class: 'seg' }, [1, 3, 5, 10, 15, 20, 30].map(m => h('button', { class: c.total === m * 60 ? 'on' : '', onclick: () => { wTimer.set(c, m * 60); ap(true); } }, m + '分')))),
-        F.row('自訂', mm, '分', ss, '秒', h('button', { class: 'btn sm', onclick: () => { const t = (+mm.value || 0) * 60 + (+ss.value || 0); if (t > 0) { wTimer.set(c, t); ap(true); } } }, '設定')));
+        F.row('自訂', mm, '分', ss, '秒', h('button', { class: 'btn sm', onclick: () => { const t = (+mm.value || 0) * 60 + (+ss.value || 0); if (t > 0) { wTimer.set(c, t); ap(true); } } }, '設定')),
+        F.row('時間到的鈴聲', h('div', { class: 'row' },
+          h('select', { class: 'inp', onchange: e => { c.sound = e.target.value; ap(); } }, SOUNDS.map(([k, t]) => h('option', { value: k, selected: (c.sound || 'bell') === k }, t))),
+          h('button', { class: 'btn sm', title: '試聽', onclick: () => Snd.ring(c.sound || 'bell') }, '🔊 試聽'))));
+      f.append(h('p', { class: 'muted small' }, '快捷鍵：按空白鍵開始／暫停（選了這個計時器時控制它，沒選時控制這一頁的第一個計時器）。'));
     }
   },
   text: {
@@ -396,21 +425,22 @@ const WT = {
       let key = '';
       // 黑板內容、值日生、倒數、應到實到改了（或換日）才重畫
       return () => {
-        const side = wd.cfg.side !== false, att = side && !!wd.cfg.att;
-        const k = JSON.stringify(D.board) + fmtMD(new Date()) + (side ? Board.dutyToday().map(s => s.no).join() + Board.countdownText() : '') + (att ? D.students.length + '/' + presentList().length : '');
+        const side = wd.cfg.side !== false, att = side && wd.cfg.att ? wallAtt() : null;
+        const k = JSON.stringify(D.board) + fmtMD(new Date()) + (side ? Board.dutyToday().map(s => s.no).join() + Board.countdownText() : '') + (att ? att.join('/') : '');
         if (k === key) return;
         key = k;
-        const inner = Board.render(true), main = h('div', { class: 'wb-main' }, inner);
-        box.replaceChildren(main, h('div', { class: 'b-side wb-side' }, side ? Board.sideItems(att) : []));
+        const inner = Board.render(true, side ? { att: att || false } : undefined), main = h('div', { class: 'wb-main' }, inner);
+        box.replaceChildren(main);
         requestAnimationFrame(() => fitText(main, inner, 0, 200));
       };
     },
     settings(f, wd, ap) {
       const side = wd.cfg.side !== false;
       f.append(h('p', null, '顯示教室黑板的內容（聯絡簿或自由書寫）。'),
-        F.tog('右邊直寫值日生和倒數', side, v => { wd.cfg.side = v; ap(true); }),
-        h('div', { hidden: !side }, F.tog('也寫應到、實到', wd.cfg.att, v => { wd.cfg.att = v; ap(true); })),
-        h('p', { class: 'muted small' }, '值日生、倒數在「編輯黑板」下面的「黑板最右邊也寫」設定。'),
+        F.tog('聯絡簿前面也寫倒數和值日生', side, v => { wd.cfg.side = v; ap(true); }),
+        h('div', { hidden: !side }, F.tog('也寫應到、實到', wd.cfg.att, v => { wd.cfg.att = v; ap(true); }),
+          h('p', { class: 'muted small' }, '人數和動態牆上的「應到實到」小工具一樣（自己填的數字也會跟著變）；沒有那個小工具時，照考試面板的人數或今天的點名。')),
+        h('p', { class: 'muted small' }, '值日生、倒數在「編輯黑板」下面的「聯絡簿前面也寫」設定。橫書時寫在最上面兩行，直書時是最右邊兩行。'),
         h('button', { class: 'btn', onclick: () => Board.edit() }, '✎ 編輯黑板'));
     }
   },
@@ -447,11 +477,11 @@ const WT = {
     cfg: () => ({ round: [], last: null, src: 'class', names: '', from: 1, to: 30 }),
     render(b, wd) {
       const c = wd.cfg, name = h('div', { class: 'wr-name' }), P = drawPool(c), sh = x => P.find(p => p.id === x);
-      name.textContent = c.last != null && sh(c.last) ? sh(c.last).t : '？';
+      drawShow(name, c.last != null ? sh(c.last) : null, c.last != null && !!sh(c.last));
       const go = () => {
         let pool = P.filter(x => !c.round.includes(x.id)); if (!pool.length) { c.round = []; pool = P.filter(x => x.id !== c.last); if (!pool.length) pool = P; }
         const win = pick(pool); let i = 0;
-        const step = () => { if (i++ < 14) { name.textContent = pick(P).t; Snd.tick(); setTimeout(step, 50 + i * 12); } else { c.last = win.id; c.round.push(win.id); save(); name.textContent = win.t; Snd.win(); } };
+        const step = () => { if (i++ < 14) { drawShow(name, pick(P)); Snd.tick(); setTimeout(step, 50 + i * 12); } else { c.last = win.id; c.round.push(win.id); save(); drawShow(name, win, true); Snd.win(); } };
         step();
       };
       b.append(h('div', { class: 'w-card w-random' }, name, P.length ? h('button', { class: 'wbtn yellow', onclick: go }, '抽！')
@@ -755,6 +785,13 @@ const Wall = {
     if (typing) return;
     const wd = this.cur();
     if (e.key === 'Escape') { if (wd) this.select(null); return; }
+    // 空白鍵：計時器開始／暫停（選了計時器就控制它，否則控制這一頁的第一個計時器；鎖定版面時也可以用）
+    if (e.key === ' ') {
+      const tw = wd && wd.type === 'timer' ? wd : this.page().widgets.find(w => w.type === 'timer');
+      if (!tw) return;
+      e.preventDefault(); if (t.closest && t.closest('button')) t.blur();
+      wTimer.toggle(tw.cfg); save(); this.drawWidget(tw); return;
+    }
     if (!wd || D.wall.locked) return;
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.remove(wd); return; }
     const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];

@@ -55,8 +55,9 @@ Tick.add(() => {
 function renderBoard() {
   const b = $('#board'); b.replaceChildren();
   b.classList.toggle('small', !!D.info.boardSmall);
-  const right = h('div', { class: 'b-side' }, Board.sideItems());
-  const main = h('div', { class: 'b-main', title: '點一下編輯黑板', onclick: () => Board.edit() }, Board.render(false));
+  // 收小時倒數、值日生放右邊一橫列，平常寫在聯絡簿前面
+  const small = !!D.info.boardSmall, right = small ? Board.sideBox() : h('div');
+  const main = h('div', { class: 'b-main', title: '點一下編輯黑板', onclick: () => Board.edit() }, Board.render(false, small ? undefined : {}));
   b.append(main, right,
     h('button', { class: 'b-min', title: D.info.boardSmall ? '展開黑板' : '收小黑板', onclick: e => { e.stopPropagation(); D.info.boardSmall = !D.info.boardSmall; save(); renderBoard(); } }, D.info.boardSmall ? '▾' : '▴'));
   requestAnimationFrame(() => { const inner = main.firstChild; if (inner) fitText(main, inner, 0, D.info.boardSmall ? 22 : 40); });
@@ -477,7 +478,7 @@ const Settings = {
       h('h3', { class: 'set-h' }, '黑板'),
       row('黑板字體', seg(I.boardFont, [['kai', '楷書'], ['wenkai', '霞鶩文楷']], v => { I.boardFont = v; }),
         '黑板、公佈欄和投影的字。', '楷書用電腦內建的標楷體；霞鶩文楷比較活潑，要連上網路才下載得到（沒網路時先用楷書）。'),
-      row('應到、實到', seg(I.attPos === 'none' ? 'none' : 'right', [['none', '不寫'], ['right', '寫在黑板最右邊']], v => { I.attPos = v; }), '和值日生、倒數一起直寫在黑板最右邊。'),
+      row('應到、實到', seg(I.attPos === 'none' ? 'none' : 'right', [['none', '不寫'], ['right', '寫在黑板上']], v => { I.attPos = v; }), '寫在聯絡簿前面第一行、倒數的後面（直書時是最右邊那一行）。'),
       h('h3', { class: 'set-h' }, '哪些按鈕要出現'),
       h('p', { class: 'muted' }, '點一下就藏起來，再點一下回來。藏起來不會刪掉資料。'),
       h('div', { class: 'lbl small' }, '下方工具列'),
