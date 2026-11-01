@@ -273,7 +273,7 @@ const Timer = {
   set(sec) { const s = this.s; s.mode = 'down'; s.total = sec; s.remain = sec; s.running = false; s.rang = false; this.persist(); this.redraw(); },
   add(sec) {
     const s = this.s; s.mode = 'down'; s.rang = false;
-    if (s.running) s.endAt += sec * 1000; else s.remain = Math.max(0, s.remain + sec);
+    if (s.running) s.endAt = Math.max(Date.now(), s.endAt + sec * 1000); else s.remain = Math.max(0, s.remain + sec);
     if (!s.running) s.total = Math.max(s.total, s.remain);
     this.persist(); this.redraw();
   },
@@ -282,7 +282,7 @@ const Timer = {
     const s = this.s;
     if (s.running && s.mode === 'down' && s.endAt <= Date.now()) {
       s.running = false; s.remain = 0; s.rang = true; this.persist();
-      Snd.bell(); toast('⏰ 時間到！' + (s.title ? '（' + s.title + '）' : ''), { ms: 8000 });
+      Snd.ring(s.sound || 'bell'); toast('⏰ 時間到！' + (s.title ? '（' + s.title + '）' : ''), { ms: 8000 });
       this.redraw();
     }
     const chip = $('#timerChip');
@@ -303,7 +303,15 @@ const Timer = {
   redraw() { if (this.p && !this.p.closed) this.p.rebuild(); },
   open() {
     if (this.p && !this.p.closed) return;
-    this.p = proj('計時器', c => this.build(c), { cls: 'timerp', onClose: () => { this.digits = this.dial = null; } });
+    // 空白鍵：開始／暫停（計時器畫面在最上層、不是在打字時）
+    const onKey = e => {
+      if (e.key !== ' ' || e.repeat || Layers[Layers.length - 1] !== this.p) return;
+      const t = e.target; if (t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault(); if (t.closest && t.closest('button')) t.blur();
+      this.s.running ? this.pause() : this.start();
+    };
+    document.addEventListener('keydown', onKey);
+    this.p = proj('計時器', c => this.build(c), { cls: 'timerp', onClose: () => { this.digits = this.dial = null; document.removeEventListener('keydown', onKey); } });
   },
   build(c) {
     const s = this.s, down = s.mode === 'down';
@@ -323,13 +331,17 @@ const Timer = {
       const mm = h('input', { class: 'inp num', type: 'number', min: 0, max: 600, placeholder: '分' }), ss = h('input', { class: 'inp num', type: 'number', min: 0, max: 59, placeholder: '秒' });
       c.body.append(h('div', { class: 'row center wrap' }, [1, 3, 5, 10, 15, 20, 30].map(m => h('button', { class: 'btn', onclick: () => this.set(m * 60) }, m + ' 分')),
         h('span', { class: 'row' }, mm, '分', ss, '秒', h('button', { class: 'btn', onclick: () => { const t = (+mm.value || 0) * 60 + (+ss.value || 0); if (t > 0) this.set(t); } }, '設定')),
-        h('button', { class: 'btn', onclick: () => this.add(60) }, '+1 分')));
+        h('button', { class: 'btn', onclick: () => this.add(-60) }, '−1 分'),
+        h('button', { class: 'btn', onclick: () => this.add(60) }, '+1 分')),
+        h('div', { class: 'row center' }, '時間到的鈴聲',
+          h('select', { class: 'inp', onchange: e => { s.sound = e.target.value; this.persist(); } }, SOUNDS.map(([k, t]) => h('option', { value: k, selected: (s.sound || 'bell') === k }, t))),
+          h('button', { class: 'btn sm', onclick: () => Snd.ring(s.sound || 'bell') }, '🔊 試聽')));
     }
     c.body.append(h('div', { class: 'row center' },
       s.running ? h('button', { class: 'btn big', onclick: () => this.pause() }, '⏸ 暫停') : h('button', { class: 'btn big yellow', onclick: () => this.start() }, (down ? s.remain > 0 && s.remain < s.total : s.elapsed > 0) ? '▶ 繼續' : '▶ 開始'),
       down ? h('button', { class: 'btn big', onclick: () => this.reset() }, '↺ 回到 ' + fmtSec(s.total)) : null,
       h('button', { class: 'btn big', onclick: () => this.zero() }, '歸零')),
-      h('p', { class: 'muted center small' }, '關掉這個畫面也會繼續計時，上方會顯示剩下的時間；時間到會響鈴。'));
+      h('p', { class: 'muted center small' }, '按空白鍵開始／暫停。關掉這個畫面也會繼續計時，上方會顯示剩下的時間；時間到會響鈴。'));
     this.tick();
   }
 };
