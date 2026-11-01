@@ -68,6 +68,8 @@ function fitExam(C) {
   C.style.setProperty('--k', lo);
 }
 function fmtClock(m) { const s = Math.round(m * 60); return pad(Math.floor(s / 3600) % 24) + ':' + pad(Math.floor(s % 3600 / 60)); }
+// 考試面板提醒文字的顏色（和面板其他黑字分開）
+const NOTE_COLORS = [['#d9480f', '橘紅'], ['#d63c3c', '紅'], ['#1c64c8', '藍'], ['#1f8f4e', '綠'], ['#7b3fbf', '紫'], ['#25313b', '黑']];
 const FLOW_ICONS = ['📖', '✏️', '🔢', '🌏', '🔬', '🗣️', '🎨', '🎵', '⚽', '💻', '📝', '☕', '🧹', '🍱'];
 const flowOn = c => !!c.flowAt && dateKey(new Date(c.flowAt)) === dateKey();
 // 聯絡簿小工具要寫的應到實到 [應到, 實到]：先找這一頁、再找別頁的「應到實到」小工具，其次是有顯示人數的考試面板，都沒有就照今天點名
@@ -133,7 +135,7 @@ const WT = {
     name: '考試面板', icon: '📝', w: 56, h: 72,
     cfg: () => ({ title: '考試', src: 'now', nowSubj: '國語', nowMin: 40, nowStart: null, items: [{ subj: '國語', start: '08:40', end: '09:20' }],
       flowAt: null, flow: [{ name: '國語', min: 40, icon: '📖' }, { name: '下課', min: 10, icon: '☕', brk: true }, { name: '數學', min: 40, icon: '🔢' }],
-      showAtt: true, attAuto: true, expected: 25, actual: 25, note: '寫完檢查姓名、座號，再檢查答案', warn: 5, bell: true, sound: 'bell', warnBell: false, showList: false }),
+      showAtt: true, attAuto: true, expected: 25, actual: 25, note: '寫完檢查姓名、座號，再檢查答案', noteColor: '#d9480f', warn: 5, bell: true, sound: 'bell', warnBell: false, showList: false }),
     render(b, wd) {
       const c = wd.cfg;
       const subj = h('div', { class: 'we-subj' }), st = h('span', { class: 'we-t' }), en = h('span', { class: 'we-t' }), bar = h('i'), left = h('div', { class: 'we-left' });
@@ -147,7 +149,7 @@ const WT = {
         h('div', { class: 'we-title' }, c.title || '考試'),
         h('div', { class: 'we-card' }, subj, h('div', { class: 'we-row' }, st, h('div', { class: 'we-bar' }, bar), en), left, quick),
         c.showAtt ? h('div', { class: 'we-att' }, h('div', null, '應到 ', ea, ' 人'), h('div', null, '實到 ', aa, ' 人')) : null,
-        c.note ? h('div', { class: 'we-note' }, c.note) : null,
+        c.note ? h('div', { class: 'we-note', style: '--nc:' + (c.noteColor || '#d9480f') }, c.note) : null,
         c.showList ? list : null);
       b.append(C);
       let lastSec = -1, listKey = '', fitKey = '';
@@ -267,6 +269,7 @@ const WT = {
       }
       f.append(F.area('提醒文字', c.note, v => { c.note = v; ap(); }, '例如：寫完檢查姓名、座號，再檢查答案'),
         h('div', { class: 'reasons' }, D.clockNotes.map(t => h('button', { class: 'chip', onclick: () => { c.note = t; ap(true); } }, t))),
+        F.row('提醒文字的顏色', h('div', { class: 'we-ncs' }, NOTE_COLORS.map(([v, t]) => h('button', { class: 'we-nc' + ((c.noteColor || '#d9480f') === v ? ' on' : ''), style: '--nc:' + v, title: t, onclick: () => { c.noteColor = v; ap(true); } }, t)))),
         F.tog('下方列出全部科目', c.showList, v => { c.showList = v; ap(); }),
         h('p', { class: 'muted small' }, '打開後，面板最下面會列出每一科（含下課）的時間和進度：正在進行的是粗體，結束的變淡。上面的大字只顯示「現在這一科」。'));
     }
