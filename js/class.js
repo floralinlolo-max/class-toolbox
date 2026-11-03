@@ -130,7 +130,7 @@ function tile(s) {
   if (st) t.append(h('span', { class: 'badge att-' + st }, ABS_SHORT[st]));
   if (UI.mode === 'hw' && UI.hwId) {
     const m = Homework.mark(UI.hwId, s.id);
-    if (m) t.append(h('span', { class: 'badge hw-' + m }, { miss: '缺', fix: '訂', done: '✓' }[m]));
+    if (m) { t.classList.add('hwm-' + m); t.append(h('span', { class: 'badge hw-' + m }, { miss: '缺', fix: '訂', done: '✓' }[m])); }   // 整個名牌也照狀態上色，投影時遠遠就看得出來
   }
   const gc = Groups.colorOf(s);
   if (gc) { t.classList.add('grouped'); t.style.setProperty('--gc', gc); }
@@ -490,7 +490,9 @@ const Settings = {
       tiles(CARD_BTNS.map(([id, icon, label]) => ({ id, icon, label })), I.cardHidden, (id, hid) => { I.cardHidden = hid ? I.cardHidden.filter(x => x !== id) : I.cardHidden.concat(id); }),
       h('h3', { class: 'set-h' }, '只影響這台電腦'),
       row('老師和同學的樣子', seg(Look.fine ? 'fine' : 'simple', [['fine', '精緻'], ['simple', '簡單']], v => Look.set(v)),
-        '精緻：大眼睛、有表情（加分會笑、抽中會驚訝）和小動作，需要比較好的電腦。', '畫面卡卡的時候，改成簡單。'));
+        '精緻：大眼睛、有表情（加分會笑、抽中會驚訝）和小動作，需要比較好的電腦。', '畫面卡卡的時候，改成簡單。'),
+      row('教室名牌大小', seg(Look.tag, [['m', '標準'], ['l', '大'], ['xl', '特大']], v => Look.setTag(v)),
+        '3D 教室裡同學的名牌（座號、名字、分數、缺／訂／✓）。投影時後面的同學看不清楚就選大一點。', '名牌會自動避開同學的臉，太擠的地方會稍微縮小。'));
   },
   tab_lock(p, c) { Lock.settings(p, c); },
   tab_data(p, c) {

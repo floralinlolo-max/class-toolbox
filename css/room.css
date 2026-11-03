@@ -1,4 +1,5 @@
-/* 3D 教室：立體人物與椅子（2026-10-31 第八筆加的；其他教室樣式在 app.css） */
+/* 3D 教室：立體人物與椅子（2026-10-31 第八筆加的；其他教室樣式在 app.css）。
+   這個檔案不會組進雲端動態牆，所以不屬於動態牆的新樣式（名牌、作業投影）也放這裡，改了不用重組雲端動態牆 */
 .r-kid > svg, .r-herald > svg, .r-tsvg > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .r-tsvg { position: absolute; inset: 0; }
 .r-herald > svg { position: absolute; left: 0; top: 0; }
@@ -43,6 +44,39 @@
 .r-view.dragging .r-teacher { cursor: grabbing; }
 /* 名牌小一點；從側面、後面看時在頭頂 */
 .r-lw .seat { box-shadow: 0 1px 4px rgba(40, 30, 10, .22); }
+/* 2026-11-03 投影時看得清楚（使用者要求）：名牌框框加粗、座號圓圈和名字字大、加扣分和缺／訂／✓、病／事等標示放大成圓形徽章；
+   檢查作業時整個名牌照狀態上色（缺交紅、要訂正橘、完成綠） */
+.r-lw .seat { border-width: .14em; font-weight: 800; padding: .12em .5em .12em .12em; gap: .24em; }
+.r-lw .seat .no { font-size: .95em; min-width: 1.55em; height: 1.55em; }
+.r-lw .seat .nm { font-size: 1.05em; }
+.r-lw .seat .sc { font-size: .9em; }
+/* 缺／訂／✓、病／事：圓形徽章掛在名牌右上角，名牌才不會變寬疊到隔壁 */
+.r-lw .seat { position: relative; }
+.r-lw .seat .badge, .r-lw .seat .badge[class*="hw-"] { position: absolute; left: auto; bottom: auto; right: -.75em; top: -.8em; display: grid; place-items: center; min-width: 1.5em; height: 1.5em; padding: 0 .2em; border-radius: 999px;
+  border: .12em solid #fff; box-shadow: 0 1px 4px rgba(40, 30, 10, .3); font-size: 1.1em; line-height: 1; z-index: 1; }
+.seat.hwm-miss { border-color: var(--minus); background: #ffe6e2; }
+.seat.hwm-fix { border-color: #e69b2e; background: #fff0d6; }
+.seat.hwm-done { border-color: var(--plus); background: #e3f6e8; }
+
+/* 作業投影（tools2.js Homework.project／projectAll）：卡片可以點一下切換狀態，人少時放大（--ow 由程式依人數設定） */
+.owep .owe { font: inherit; cursor: pointer; user-select: none; transition: transform .1s, box-shadow .1s; }
+.owep .owe:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(40, 30, 10, .15); }
+.owep .owe:active { transform: scale(.96); }
+.owep .owe-grid { grid-template-columns: repeat(auto-fill, minmax(calc(170px * var(--ow, 1)), 1fr)); gap: calc(14px * var(--ow, 1)); }
+.owep .owe-grid .owe b { font-size: calc(64px * var(--ow, 1)); }
+.owep .owe-grid .owe span { font-size: calc(26px * var(--ow, 1)); }
+.owep .owe-grid .owe small { display: block; font-size: calc(20px * var(--ow, 1)); font-weight: 800; }
+.owep .owe-grid.sm { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.owep .owe-grid.sm .owe { padding: 8px; }
+.owep .owe-grid.sm .owe b { font-size: 50px; }
+.owep .owe-grid.sm .owe span { font-size: 20px; }
+.owep .owe-grid.sm .owe small { font-size: 17px; }
+.owep .owe-sec h3 { font-size: 24px; margin: 16px 0 8px; }
+.owe.done { border-color: var(--plus); color: var(--plus); background: var(--plus-tint); }
+.owe.none { border-color: #c9bfae; border-style: dashed; color: #9a8f7e; }
+.owe-tip { color: var(--muted); font-size: 15px; }
+.owe-ok { text-align: center; font-size: 40px; font-weight: 800; color: var(--plus); margin-bottom: 14px; }
+.owe-ok.sm { font-size: .75em; margin: 0; }
 
 /* 舉牌的牌子（3D 平面，背面是空白木板） */
 .r3.r-hsign { position: absolute; left: 0; top: 0; padding: 6px 10px; background: #fffdf3; border: 5px solid #e2a54d; border-radius: 8px; display: grid; place-items: center;

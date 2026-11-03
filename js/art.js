@@ -5,7 +5,11 @@
 
 const Look = {
   get fine() { try { return localStorage.getItem('bxbox-look') !== 'simple'; } catch (e) { return true; } },
-  set(v) { try { localStorage.setItem('bxbox-look', v); } catch (e) { } }
+  set(v) { try { localStorage.setItem('bxbox-look', v); } catch (e) { } },
+  // 3D 教室名牌大小（投影用，只記在這台電腦）：標準／大／特大，預設大（2026-11-03 使用者要名牌放大）
+  get tag() { try { return localStorage.getItem('bxbox-tag') || 'l'; } catch (e) { return 'l'; } },
+  setTag(v) { try { localStorage.setItem('bxbox-tag', v); } catch (e) { } },
+  get tagK() { return { m: 1, l: 1.5, xl: 1.9 }[this.tag] || 1.5; }
 };
 function hashOf(s) {   // FNV-1a 再打散，座號相近、建立時間相同的同學也會長得不一樣
   let x = 2166136261;

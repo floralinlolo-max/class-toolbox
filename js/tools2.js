@@ -117,22 +117,40 @@ const Homework = {
           h('button', { class: (w.marks[s.id] || '') === k ? 'on' : '', onclick: () => { this.setMark(w, s.id, k); c.rebuild(); } }, t)))))));
     });
   },
+  // 投影的卡片：點一下切換 缺交 → 要訂正 → 完成 → 清除（使用者要求）。點過的同學留在畫面上（keep），變成完成、清除也不會消失，才能再點回來
+  oweCard(w, s, keep, c) {
+    const m = w.marks[s.id] || '';
+    return h('button', { class: 'owe ' + (m || 'none'), title: '點一下切換：缺交 → 要訂正 → 完成 → 清除', onclick: () => { keep.add(s.id); this.cycle(w.id, s.id); c.rebuild(); } },
+      h('b', null, pad(s.no)), this.showNames ? h('span', null, s.name) : null, h('small', null, m === 'done' ? '✓ 完成' : HW_T[m] || '已清除'));
+  },
+  oweHead(c, all, setAll) {
+    return [h('span', { class: 'owe-tip' }, '點卡片切換：缺交 → 要訂正 → 完成 → 清除'),
+      setAll ? h('button', { class: 'btn sm', onclick: () => { setAll(!all); c.rebuild(); } }, all ? '只看還沒交齊' : '顯示全班') : null,
+      h('button', { class: 'btn sm', onclick: () => { this.showNames = !this.showNames; c.rebuild(); } }, this.showNames ? '只顯示座號' : '顯示名字')];
+  },
   project(id) {
     const w = this.get(id); if (!w) return;
+    const keep = new Set(this.owing(w).map(s => s.id));   // 打開時還沒交齊的同學
+    let all = false;
     proj('還沒交齊：' + w.name, c => {
-      c.headExtra = [h('button', { class: 'btn sm', onclick: () => { this.showNames = !this.showNames; c.rebuild(); } }, this.showNames ? '只顯示座號' : '顯示名字')];
-      const L = this.owing(w);
+      c.headExtra = this.oweHead(c, all, v => { all = v; });
+      const L = roster().filter(s => all || keep.has(s.id) || w.marks[s.id] === 'miss' || w.marks[s.id] === 'fix');
       if (!L.length) { c.body.append(h('div', { class: 'bigmsg' }, '🎉 全部交齊了！')); return; }
-      c.body.append(h('div', { class: 'owe-grid' }, L.map(s => h('div', { class: 'owe ' + w.marks[s.id] }, h('b', null, pad(s.no)), this.showNames ? h('span', null, s.name) : null, h('small', null, HW_T[w.marks[s.id]])))));
+      if (!this.owing(w).length) c.body.append(h('div', { class: 'owe-ok' }, '🎉 全部交齊了！'));
+      // 人少時卡片放大，投影從後面也看得清楚
+      c.body.append(h('div', { class: 'owe-grid', style: '--ow:' + (L.length <= 6 ? 1.6 : L.length <= 12 ? 1.3 : 1) }, L.map(s => this.oweCard(w, s, keep, c))));
     }, { cls: 'owep' });
   },
   projectAll() {
+    const W = D.hw.filter(w => this.owing(w).length), keep = new Map(W.map(w => [w.id, new Set(this.owing(w).map(s => s.id))]));   // 打開時還欠的作業和同學
     proj('還沒交齊的作業', c => {
-      c.headExtra = [h('button', { class: 'btn sm', onclick: () => { this.showNames = !this.showNames; c.rebuild(); } }, this.showNames ? '只顯示座號' : '顯示名字')];
-      const W = D.hw.filter(w => this.owing(w).length);
+      c.headExtra = this.oweHead(c);
       if (!W.length) { c.body.append(h('div', { class: 'bigmsg' }, '🎉 作業都交齊了！')); return; }
-      c.body.append(h('div', { class: 'owe-all' }, W.map(w => h('div', { class: 'owe-sec' }, h('h3', null, w.name),
-        h('div', { class: 'owe-grid sm' }, this.owing(w).map(s => h('div', { class: 'owe ' + w.marks[s.id] }, h('b', null, pad(s.no)), this.showNames ? h('span', null, s.name) : null)))))));
+      c.body.append(h('div', { class: 'owe-all' }, W.filter(w => D.hw.includes(w)).map(w => {
+        const k = keep.get(w.id), L = roster().filter(s => k.has(s.id) || w.marks[s.id] === 'miss' || w.marks[s.id] === 'fix');
+        return h('div', { class: 'owe-sec' }, h('h3', null, w.name, this.owing(w).length ? null : h('span', { class: 'owe-ok sm' }, '　🎉 交齊了')),
+          h('div', { class: 'owe-grid sm' }, L.map(s => this.oweCard(w, s, k, c))));
+      })));
     }, { cls: 'owep' });
   },
   stats() {

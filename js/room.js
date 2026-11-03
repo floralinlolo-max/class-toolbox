@@ -345,7 +345,7 @@ const Room = {
   },
   layoutKey() {
     const i = D.info, seats = D.students.map(s => s.id + ':' + (seatOK(s) ? s.seat.join('.') : '-') + ':' + (isAbsent(s.id) ? 1 : 0) + ':' + (Groups.colorOf(s) || '')).join('|');
-    return [i.rows, i.cols, this.theme(), i.floor, i.deskItem, i.ac !== false, D.clockStyle, Look.fine, i.teacher.avatar, Light.time(), Light.season(), i.outfitSeed || '',
+    return [i.rows, i.cols, this.theme(), i.floor, i.deskItem, i.ac !== false, D.clockStyle, Look.fine, Look.tag, i.teacher.avatar, Light.time(), Light.season(), i.outfitSeed || '',
       UI.heralds.map(x => x.sid + '=' + x.text).join('|'), seats].join('/');
   },
   add(cls, tf, w, ht, props, ...kids) {
@@ -605,7 +605,8 @@ const Room = {
     const pt = el => { const q = el.getBoundingClientRect(); return [q.left + q.width / 2 - V.left, q.top + q.height / 2 - V.top]; };
     for (const c of this.cells) {
       const r = c.anchor.getBoundingClientRect();
-      c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * (c.herald ? 17 : 12), 9, 20);
+      // 名牌大小可在設定「外觀」選；舉牌同學的名牌本來就比較大，放大會蓋到牌子上的字，所以不跟著放大
+      c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * (c.herald ? 17 : 12), 9, 20) * (c.herald ? 1 : Look.tagK);
       c.face = null; c.pts = null;
       if (c.herald) { c.x = r.left + r.width / 2 - V.left; c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
       if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 25）
@@ -664,8 +665,9 @@ const Room = {
       const xs = [A[0], B[0], C[0], c.face ? c.face.x : A[0]], lo = Math.min(...xs) - W0 / 2, hi = Math.max(...xs) + W0 / 2;
       const near = faces.map((f, i) => i).filter(i => faces[i][2] > lo && faces[i][0] < hi), nearP = placed.filter(p => p[2] > lo && p[0] < hi);
       let pick = null;
-      for (const s of [1, .86, .74]) {   // 擠到放不下時名牌縮小一點（字不小於 7.5px）
-        if (s < 1 && c.fs * s < 7.5) break;
+      // 擠到放不下時名牌縮小一點（字不小於 7.5px）；名牌選「大」「特大」時最多縮到 0.86 倍，投影才看得清楚（使用者要求名牌放大）
+      for (const s of [1, .86, .74]) {
+        if (s < 1 && (c.fs * s < 7.5 || (Look.tagK > 1 && s < .86))) break;
         const w = W0 * s, ht = H0 * s, cands = [A];
         if (c.face) { const minY = c.face.y + c.face.r * .62 + ht / 2 + 1; cands.push(...seg(A, [c.face.x, c.face.y], []).filter(p => p[1] >= minY)); }
         seg(A, B, cands); seg(B, C, cands);
