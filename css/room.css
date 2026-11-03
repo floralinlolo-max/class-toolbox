@@ -3,7 +3,8 @@
 .r-kid > svg, .r-herald > svg, .r-tsvg > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .r-tsvg { position: absolute; inset: 0; }
 .r-herald > svg { position: absolute; left: 0; top: 0; }
-.r-view.fine .r-kid[data-id] > svg, .r-view.fine .r-herald > svg { transform-origin: 50% 80%; }
+.r-view.fine .r-kid[data-id] > svg { transform-origin: 50% 100%; }
+.r-view.fine .r-herald > svg { transform-origin: 50% 80%; }
 /* 老師的右手：平常放下，稱讚同學時舉起來揮手 */
 .r-teacher .arm2 { display: none; }
 .r-teacher.saying .arm { display: none; }
@@ -13,16 +14,30 @@
 /* 椅子：座墊、椅背（下面是兩支後腳）、前腳 */
 .r-seat { background: #d9a066; border: 3px solid #b97a40; border-radius: 6px; cursor: pointer; }
 .r-chairback { cursor: pointer;
-  background: linear-gradient(#c98b4f, #c98b4f) top / 100% 32px no-repeat,
-    linear-gradient(#8e98a1, #8e98a1) 3px 32px / 5px 100% no-repeat, linear-gradient(#8e98a1, #8e98a1) right 3px top 32px / 5px 100% no-repeat;
+  background: linear-gradient(#c98b4f, #c98b4f) top / 100% 24px no-repeat,
+    linear-gradient(#8e98a1, #8e98a1) 3px 24px / 5px 100% no-repeat, linear-gradient(#8e98a1, #8e98a1) right 3px top 24px / 5px 100% no-repeat;
   border-radius: 7px 7px 0 0; }
 .r-chairlegs { pointer-events: none;
   background: linear-gradient(#8e98a1, #8e98a1) 2px 0 / 5px 100% no-repeat, linear-gradient(#8e98a1, #8e98a1) right 2px top 0 / 5px 100% no-repeat; }
-/* 第九筆：日系清新配色（牆面、牆裙、窗框、窗台照 ChatGPT 建議的色碼） */
-.r-wall { --wain: #d9c3a2; --wallc: #f5eedf; background: linear-gradient(to top, #b89a72 0 6px, var(--wain) 6px 92px, #fff9ee 92px 98px, var(--wallc) 98px); }
-.r-wall.side { --wain: #d2bb98; --wallc: #efe6d4; }
-/* 兩側的大片窗戶：季節風景（橫向重複）＋時段天色＋白色窗框 */
-.r-wband { position: absolute; top: 34px; height: 160px; border: 8px solid #fff9ee; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #d5c8b5; }
+/* 牆面、牆裙配色照 ChatGPT 建議的色碼；2026-11-03 起照佈景主題換色（room.js 的 walls() 依 THEME_WALL 設 --wallc、--wain、--wline、--wbase） */
+.r-wall { --wain: #b9cdb9; --wallc: #f5f0e5; --wline: #d6c6a9; --wbase: #93a893;
+  background: linear-gradient(to top, var(--wbase) 0 6px, var(--wain) 6px 92px, var(--wline) 92px 98px, var(--wallc) 98px); }
+/* 兩側的大片窗戶：季節風景（橫向重複）＋時段天色＋水藍透明玻璃（2026-11-03 使用者要求，色碼照 ChatGPT）＋米白窗框 */
+.r-wband { position: absolute; top: 34px; height: 160px; border: 8px solid #f5f0e5; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #d8d2c5, 0 3px 8px rgba(90, 130, 145, .12); }
+.r-glass { position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(115deg, transparent 0 40px, rgba(255, 255, 255, .55) 40px 43px, transparent 43px 52px, rgba(255, 255, 255, .4) 52px 54px, transparent 54px 150px),
+    linear-gradient(rgba(160, 226, 245, .42), rgba(126, 211, 235, .38) 55%, rgba(104, 192, 224, .46)); }
+/* 節日掛飾（GARLAND）：一段 200×100 的圖橫向重複 */
+.r-garland { position: absolute; pointer-events: none; background-repeat: repeat-x; background-position: left top; z-index: 1; }
+.r-wdrop { position: absolute; top: 26px; height: 92px; transform: translateX(-50%); pointer-events: none; z-index: 1; }
+.r-wdrop svg { display: block; height: 100%; width: auto; }
+/* 課桌、櫃子在地板上的影子：柔和偏暖（ChatGPT 建議 #534130） */
+.r-bshadow { background: rgba(83, 65, 48, .3); border-radius: 12px; box-shadow: 0 0 12px 8px rgba(83, 65, 48, .22); }
+/* 被點到的同學：桌下地板的圓圈（ChatGPT 建議：薄荷綠填色、綠色外框）；多選、排座位選到的是黃色 */
+.r-ring { border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .2s; background: rgba(126, 220, 155, .38); border: 6px solid rgba(53, 169, 108, .92); box-shadow: 0 0 16px rgba(54, 184, 117, .55); }
+.r-ring.on { opacity: 1; animation: ringPulse 1.4s ease-in-out infinite alternate; }
+.r-ring.picked { opacity: 1; background: rgba(255, 214, 90, .35); border-color: rgba(240, 180, 40, .95); box-shadow: 0 0 14px rgba(246, 185, 59, .5); }
+@keyframes ringPulse { from { box-shadow: 0 0 8px rgba(54, 184, 117, .4); } to { box-shadow: 0 0 22px 4px rgba(54, 184, 117, .7); } }
 .r-wview { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; background-position: left bottom; }
 .r-wsky, .r-wframe { position: absolute; inset: 0; }
 /* 立體窗台（木板上面和前緣） */
@@ -54,6 +69,10 @@
 .r-lw .seat { position: relative; }
 .r-lw .seat .badge, .r-lw .seat .badge[class*="hw-"] { position: absolute; left: auto; bottom: auto; right: -.75em; top: -.8em; display: grid; place-items: center; min-width: 1.5em; height: 1.5em; padding: 0 .2em; border-radius: 999px;
   border: .12em solid #fff; box-shadow: 0 1px 4px rgba(40, 30, 10, .3); font-size: 1.1em; line-height: 1; z-index: 1; }
+/* 2026-11-03 名牌明顯一點：純白底、外面一圈深綠細框、影子加深；被點到的同學名牌變綠底白字（使用者要求，綠色照 ChatGPT 建議 #36B875） */
+.r-lw .seat { background: #fff; color: #594c43; box-shadow: 0 0 0 .07em rgba(47, 74, 63, .5), 0 .12em .35em rgba(40, 30, 10, .35); }
+.r-lw .seat.sel { outline: none; background: #36b875; border-color: #fff; color: #fff; box-shadow: 0 0 0 .08em #1f7a4c, 0 0 .7em rgba(54, 184, 117, .85); }
+.r-lw .seat.sel .no { background: #fff; color: #1f7a4c; }
 .seat.hwm-miss { border-color: var(--minus); background: #ffe6e2; }
 .seat.hwm-fix { border-color: #e69b2e; background: #fff0d6; }
 .seat.hwm-done { border-color: var(--plus); background: #e3f6e8; }

@@ -3,7 +3,8 @@
    座標都用「地板座標」：x 向右、y 往前（靠近鏡頭＝講桌那邊）、z 往上；鏡頭站在講台看教室，所以第 1 排在最前面、左右和老師看到的一樣。
    人物圖案在 art.js。 */
 
-const RM = { CW: 180, CD: 170, SIDE: 84, BACK: 124, FRONT: 200, WH: 300, DW: 104, DD: 54, DH: 56, TD: 84, TILT: 52, KW: 102, KH: 186, SILL: 106 };
+// 2026-11-03：課桌加大（DW、DD）、同學頭縮小，座位左右前後再拉開（CW、CD），名牌才放得下、從前面看不會疊在一起；講桌縮小（TDW、TDD、TDH）
+const RM = { CW: 190, CD: 186, SIDE: 84, BACK: 124, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
 const svgURL = s => 'url("data:image/svg+xml,' + encodeURIComponent(s) + '")';
 const THEMES = {
   auto: { name: '自動', desc: '依日期換節日佈景', sw: ['#e8e1d3', '#9fd3c1', '#f6b93b'] },
@@ -114,16 +115,6 @@ const WIN_ART = {
   mom: '<svg viewBox="0 0 160 140" preserveAspectRatio="none"><rect width="160" height="140" fill="#ffe1ea"/>' + [[40, 40, 1], [112, 56, 1.3], [70, 100, .9]].map(([x, y, k]) => '<path transform="translate(' + x + ' ' + y + ') scale(' + k + ')" d="M0 8C-14-4-8-16 0-8C8-16 14-4 0 8Z" fill="#ef7f9f"/>').join('') + '</svg>',
   dragon: '<svg viewBox="0 0 160 140" preserveAspectRatio="none"><circle cx="128" cy="30" r="15" fill="#ffd166"/><path d="M0 104Q20 96 40 104T80 104T120 104T160 104V140H0Z" fill="#5aa9e6"/><path d="M0 116Q20 108 40 116T80 116T120 116T160 116" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/></svg>'
 };
-const BUNTING = { halloween: ['#f28c28', '#6b3fa0', '#2b2b2b'], xmas: ['#d93838', '#2e8b57', '#f4f1e8'], cny: ['#d62828', '#f6c445'], moon: ['#f6c445', '#e97a45', '#7fb3d5'], kids: ['#ef476f', '#ffd166', '#06d6a0', '#118ab2'], lantern: ['#d62828', '#f6c445', '#9b59d0', '#f28c38'], mom: ['#ef7f9f', '#fbd3df', '#d63a5c'], dragon: ['#3f8f4f', '#f2c14e', '#d64545', '#3c7be0'] };
-function buntingSVG(w, colors) {
-  const n = Math.max(4, Math.round(w / 46)), Y = t => 6 + 88 * t * (1 - t), r1 = v => +v.toFixed(1);
-  let s = '<svg viewBox="0 0 ' + w + ' 70" width="' + w + '" height="70"><path d="M0 6Q' + w / 2 + ' 50 ' + w + ' 6" stroke="#8a6a4f" stroke-width="2" fill="none"/>';
-  for (let i = 0; i < n; i++) {
-    const t0 = (i + .12) / n, t1 = (i + .88) / n, tm = (i + .5) / n;
-    s += '<path d="M' + r1(t0 * w) + ' ' + r1(Y(t0)) + 'L' + r1(t1 * w) + ' ' + r1(Y(t1)) + 'L' + r1(tm * w) + ' ' + r1(Y(tm) + 30) + 'Z" fill="' + colors[i % colors.length] + '"/>';
-  }
-  return s + '</svg>';
-}
 // 運動會的萬國旗（簡化的花樣，不是特定國家）
 function flagsSVG(w) {
   const n = Math.max(4, Math.round(w / 42)), Y = t => 6 + 88 * t * (1 - t), r1 = v => +v.toFixed(1);
@@ -356,13 +347,14 @@ const Room = {
   prop(art, x, y, w, ht, z = 0, k = .93) { return this.bill('r-prop', x, y, w, ht, k, z, { innerHTML: art }); },
   // 方塊（桌子、櫃子）：上面＋四個側面（背面朝鏡頭的面自動不畫，轉到哪裡都對）；x,y 是左後角
   box(cls, x, y, w, d, ht, onclick) {
-    const [sx, sy] = this.shadowShift || [0, 0];   // 影子往陽光的反方向偏
-    this.add('r-shadow', flatAt(x - 12 + sx, y - 6 + sy, 0.5), w + 24, d + 26);
+    const [sx, sy] = this.shadowShift || [0, 0];   // 影子照到陽光的另一邊；沒有陽光時往右前方偏（ChatGPT 建議：柔和偏暖、往右下）
+    this.add('r-shadow r-bshadow', flatAt(x - 4 + sx, y + 2 + sy, 0.5), w + 8, d + 8);
     const top = this.add(cls + '-top', flatAt(x, y, ht), w, d, { onclick });
-    const front = this.add(cls + '-front bf', standAt(x, y + d, ht), w, ht, { onclick });
-    this.add(cls + '-back bf', backAt(x + w, y, ht), w, ht, { onclick });
-    this.add(cls + '-side bf', faceR(x + w, y + d, ht), d, ht, { onclick });
-    this.add(cls + '-side bf', faceL(x, y, ht), d, ht, { onclick });
+    const fh = ht - 1.2;   // 側面離地 1.2，不要穿過地上的影子、陽光和圓圈（3D 前後順序才不會亂）
+    const front = this.add(cls + '-front bf', standAt(x, y + d, ht), w, fh, { onclick });
+    this.add(cls + '-back bf', backAt(x + w, y, ht), w, fh, { onclick });
+    this.add(cls + '-side bf', faceR(x + w, y + d, ht), d, fh, { onclick });
+    this.add(cls + '-side bf', faceL(x, y, ht), d, fh, { onclick });
     return { top, front };
   },
 
@@ -376,7 +368,7 @@ const Room = {
     this.view.dataset.theme = th;
     this.view.classList.toggle('fine', fine);
     this.view.classList.toggle('behind', Math.cos(this.eye.yaw * Math.PI / 180) < 0);
-    this.cells = []; this.bbs = []; this.toons = []; this.shadowShift = [0, 0];
+    this.cells = []; this.bbs = []; this.toons = []; this.shadowShift = [16, 14];
     this.time = Light.time(); this.season = Light.season(); this.lightKey = this.time + this.season;
     // 木地板：拼貼圖壓扁成長條木板（一片約 20×80）
     if (D.info.floor !== 'terrazzo') Object.assign(this.floor.style, { backgroundImage: svgURL(SCENE.floor), backgroundSize: '320px 84px', backgroundRepeat: 'repeat' });
@@ -390,35 +382,41 @@ const Room = {
       const p = this.seatPos(r, c), s = at[r + ',' + c], hd = s && heralds.has(s.id), sit = s && !hd ? s : null, absent = sit && isAbsent(sit.id);
       const cell = { r, c, sid: sit ? sit.id : null, hsid: hd ? s.id : null, aw: RM.DW };
       const click = () => this.clickCell(cell);
+      // 被點到的同學：桌子和椅子下面的地板亮起一圈（使用者要求，顏色照 ChatGPT 的建議）
+      if (sit) cell.ring = this.add('r-ring', flatAt(p.cx - 84, p.y0 + 10, .9), 168, 128);
       // 椅子：座墊、椅背（連後腳）、前腳
-      this.add('r-seat', flatAt(p.cx - 21, p.y0 + 22, 30), 42, 34, { onclick: click });
-      this.add('r-chairback', standAt(p.cx - 22, p.y0 + 22, 68), 44, 68, { onclick: click });
-      this.add('r-chairlegs', standAt(p.cx - 21, p.y0 + 56, 30), 42, 30);
+      // 有同學坐的位子不畫座墊（反正被同學擋住）：瀏覽器排 3D 前後順序有時會出錯，把座墊畫到後排同學的胸前（原本就有，頭縮小後才看得出來）；
+      // 椅腳和椅背離地 1.2，不碰到地上的影子和圓圈
+      if (!sit || isAbsent(sit.id)) this.add('r-seat', flatAt(p.cx - 21, p.y0 + 23, 30), 42, 22, { onclick: click });
+      this.add('r-chairback', standAt(p.cx - 22, p.y0 + 22, 60), 44, 58.8, { onclick: click });   // 椅背矮一點，才不會從縮小的頭和肩膀中間露出來
+      this.add('r-chairlegs', standAt(p.cx - 21, p.y0 + 46, 30), 42, 28.8);
       if (sit && !absent) {   // 立牌比畫布大 1.15 倍，同學看起來大一點；地上一塊影子
         const [shx, shy] = this.shadowShift;
-        this.add('r-shadow', flatAt(p.cx - 26 + shx * .6, p.y0 + 18 + shy * .6, .6), 52, 44);
+        this.add('r-shadow', flatAt(p.cx - 26 + shx * .6, p.y0 + 26 + shy * .6, .6), 52, 44);
         const L = this.kidLook(sit, th), o = { theme: th, band: Groups.colorOf(sit), seed: hashOf(sit.id), fine, style: ` style="--d:-${(hashOf(sit.id) % 50) / 10}s"` };
-        cell.kid = this.toon('r-kid', p.cx, p.y0 + 40, 126, 339, -69, 0, (a, e) => Toon.kid(L, a, e, o), { 'data-id': sit.id, onclick: click }).el;
+        cell.kid = this.toon('r-kid', p.cx, p.y0 + 50, 126, 267, 2.3, 0, (a, e) => Toon.kid(L, a, e, o), { 'data-id': sit.id, onclick: click }).el;
       }
       const { top } = this.box('r-desk', p.cx - RM.DW / 2, p.y0 + 64, RM.DW, RM.DD, RM.DH, click);
       if (sit && !absent && item && item !== 'none') {
-        if (item === 'milk') this.prop(ART.milk, p.cx + 36, p.y0 + 84, 16, 24, RM.DH, .8);
+        if (item === 'milk') this.prop(ART.milk, p.cx + 40, p.y0 + 86, 16, 24, RM.DH, .8);
         else if (DESK_ART[item]) top.append(h('div', { class: 'r-on', innerHTML: DESK_ART[item] }));
       }
       // 名牌大小照桌面；從正面看放在自己的桌子前方（下巴下面 → 桌面 → 桌子前面板，挑不會擋到任何人臉的位置），
-      // 從側面、後面看放在頭頂上。臉的位置：頭的中心在離地 108 的地方（toon.js 的 kid 頭在 94，立牌放大 1.15 倍）
+      // 從側面、後面看放在頭頂上。臉的位置：頭的中心在 toon.js 的 Toon.KID.Y，立牌放大 1.15 倍
+      const dy1 = p.y0 + 64 + RM.DD - 4, fz = Toon.KID.Y * 1.15;
       cell.anchor = top;
-      cell.path = [this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 70, RM.DH), 2, 2), this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 118, RM.DH), 2, 2), this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 118, 8), 2, 2)];
-      cell.faceA = this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 40, 108), 2, 2);
-      cell.posTop = this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 40, 168), 2, 2);
+      // 錨點都離開桌面、立牌一點點（不要剛好貼在同一個平面上），瀏覽器排 3D 前後順序才不會亂
+      cell.path = [this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 70, RM.DH + 1), 2, 2), this.add('r-anchor', flatAt(p.cx - 1, dy1, RM.DH + 1), 2, 2), this.add('r-anchor', flatAt(p.cx - 1, dy1, 8), 2, 2)];
+      cell.faceA = this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 56, fz), 2, 2);
+      cell.posTop = this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 56, fz + Toon.KID.R * 1.15 * 2.3), 2, 2);
       this.cells.push(cell);
     }
     this.heralds(th, fine);
     // 老師：沿用同一個元素，走路的動畫才不會斷；平常面向同學（教室後面）
     const av = avatarOf(D.info.teacher.avatar), to = { theme: th, fine };
     if (!this.teacherEl) {
-      this.teacherEl = this.add('r-teacher', '', 130, 390, { title: '老師', onclick: () => this.teacherCard() });
-      this.teacherT = { x: this.W / 2, y: this.L - RM.FRONT + 150, w: 130, ht: 390, z: -70, k: 0, face: 180, key: '', el: this.teacherEl };
+      this.teacherEl = this.add('r-teacher', '', 114, 343, { title: '老師', onclick: () => this.teacherCard() });   // 0.88 倍：同學的頭縮小後，老師也跟著小一點才不會像巨人
+      this.teacherT = { x: this.W / 2, y: this.L - RM.FRONT + 150, w: 114, ht: 343, z: -62, k: 0, face: 180, key: '', el: this.teacherEl };
     }
     const T = this.teacherT;
     T.cache = new Map(); T.nodes = new Map(); T.key = ''; T.draw = (a, e) => Toon.teacher(av, a, e, to);
@@ -426,18 +424,21 @@ const Room = {
     this.toons.push(T); this.drawToon(T); this.sayFor = null;
     this.lastMin = -1; this.tickClock(); this.drawAC();
   },
-  // 同學：臉、膚色、髮型、髮色大家一樣（使用者指定：黑色短髮、齊瀏海，才不會男生配到綁辮子、蝴蝶結的女生樣子）；衣服顏色另外亂數，「換衣服顏色」會換一組
+  // 同學：臉、膚色、髮型、髮色大家一樣（使用者指定：瓜皮頭、中性臉，才不會男生配到綁辮子、蝴蝶結的女生樣子）；衣服顏色另外亂數，「換衣服顏色」會換一組
   kidLook(s, th) {
     const { p, collar } = kidLook(s, { theme: th });
     const shirt = Groups.colorOf(s) || KID_SHIRT[hashOf(s.id + '|' + (D.info.outfitSeed || '')) % KID_SHIRT.length];
-    return Object.assign({}, p, { shirt, collar, skin: SKINS[0], mouth: 0, glasses: null, front: 'bowl', back: 'short', extra: null, acc: null, hair: HAIRS[0] });
+    return Object.assign({}, p, { shirt, collar, collarC: KID3D.collar, skin: KID3D.skin, face: KID3D.face, mouth: 0, glasses: null, front: 'mush', back: 'mush', extra: null, acc: null, hair: KID3D.hair, shine: KID3D.shine });
   },
   walls() {
-    const { W, L, th } = this, WH = RM.WH, bc = BUNTING[th];
+    // 2026-11-03：三角彩旗拿掉（只有運動會留萬國旗），改掛各主題的掛飾（GARLAND），牆面和牆裙也照主題換色（THEME_WALL）
+    const { W, L, th } = this, WH = RM.WH, gar = GARLAND[th], [wc, wn] = THEME_WALL[th] || THEME_WALL.none;
+    const paint = (el, k) => { const s = el.style; s.setProperty('--wallc', shade(wc, -.03 * k)); s.setProperty('--wain', shade(wn, -.05 * k)); s.setProperty('--wline', shade(wn, .45)); s.setProperty('--wbase', shade(wn, -.28)); return el; };
+    const garland = (x, w, top, ht = 64) => h('div', { class: 'r-garland', style: 'left:' + Math.round(x) + 'px;width:' + Math.round(w) + 'px;top:' + top + 'px;height:' + ht + 'px;background-image:' + svgURL(gar) + ';background-size:' + ht * 2 + 'px ' + ht + 'px' });
     const bw = Math.round(clamp(W * .5, 260, 600)), sw = (W - bw) / 2, lc = Math.round(sw / 2), rc = Math.round(W - sw / 2);
     const at = (x, el) => { el.style.left = x + 'px'; return el; };
     // 後牆：冷氣、班名、公佈欄、時鐘
-    const back = this.backWall = this.add('r-wall back bf', standAt(0, 0, WH), W, WH);
+    const back = this.backWall = paint(this.add('r-wall back bf', standAt(0, 0, WH), W, WH), 0);
     this.signEl = at(lc, h('div', { class: 'r-sign' }));
     this.bb = h('div', { class: 'r-bb', title: '點一下編輯公佈欄', style: { width: bw + 'px' }, onclick: () => this.editBoard() });
     // 時鐘掛在右邊冷氣和右邊窗戶中間、和冷氣一樣高（使用者指定）：空間不夠就把右邊冷氣往公佈欄挪一點，還是不夠才掛到冷氣下面
@@ -456,15 +457,25 @@ const Room = {
       lunch: [poster('細嚼慢嚥'), poster('吃完分類')], reading: [poster('閱讀時光', 'green'), poster('好書分享', 'green')], exam: [poster('安靜作答', 'exam'), poster('考試中', 'exam')]
     }[th];
     if (deco) back.append(at(lc, h('div', { class: 'r-deco', innerHTML: deco[0] })), at(rc, h('div', { class: 'r-deco', innerHTML: deco[1] })));
-    if (bc) back.append(h('div', { class: 'r-bunt', innerHTML: buntingSVG(W, bc) }));
+    if (gar) back.append(garland(0, W, 0));
     if (th === 'sports') back.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(W) }));
     back.append(this.clockEl);
     // 兩側：大片窗戶（窗外是季節風景），窗戶下面是立體窗台。左牆由前往後畫、右牆由後往前畫
-    const left = this.add('r-wall side bf', faceR(0, L, WH), L, WH);
-    const right = this.add('r-wall side bf', faceL(W, 0, WH), L, WH);
+    const left = paint(this.add('r-wall side bf', faceR(0, L, WH), L, WH), 1);
+    const right = paint(this.add('r-wall side bf', faceL(W, 0, WH), L, WH), 1);
     this.bands = [{ side: 'left', y1: 70, y2: L - 70 }, { side: 'right', y1: 60, y2: Math.max(260, L - 400) }];
     left.append(this.wband(70, L - 140));
     right.append(this.wband(60, this.bands[1].y2 - 60));
+    if (gar) left.append(garland(56, L - 112, 14, 72)), right.append(garland(46, this.bands[1].y2 - 32, 14, 72));   // 掛在窗戶上緣，兩邊多出一點
+    // 窗前再垂掛幾個大一點的應景吊飾（使用者舉例：元宵節在窗戶周圍掛燈籠），大約每兩格窗一個，顏色輪流
+    const drop = {
+      lantern: ['#f28c38', '#9b59d0', '#e98dad', '#4fb3e8'].map(c => ART.flantern(c)), cny: [ART.lantern], moon: ['#e97a45', '#f6c445', '#7fb3d5'].map(c => ART.plantern(c)),
+      halloween: [ART.bats, ART.ghost], xmas: [ART.wreath, ART.stocking], dragon: [ART.sachets], kids: [ART.star], mom: [ART.carnations]
+    }[th];
+    if (drop) [[left, 70, L - 140], [right, 60, this.bands[1].y2 - 60]].forEach(([wall, x, w], j) => {
+      const n = Math.max(1, Math.round(w / 230));
+      for (let i = 0; i < n; i++) wall.append(h('div', { class: 'r-wdrop', style: { left: Math.round(x + (i + .5) * w / n) + 'px' }, innerHTML: drop[(i + j) % drop.length] }));
+    });
     const door = h('div', { class: 'r-door', style: { left: (L - 340) + 'px' } }, h('i'));
     if (th === 'cny') door.append(h('b', { class: 'r-fu' }, h('span', null, '福')));
     if (th === 'halloween') door.append(h('div', { class: 'r-doordeco', innerHTML: ART.pumpkin }));
@@ -473,23 +484,22 @@ const Room = {
     right.append(door);
     if (th === 'cny') right.append(h('div', { class: 'r-cl', style: { left: (L - 384) + 'px' } }, '五福臨門'), h('div', { class: 'r-cl', style: { left: (L - 192) + 'px' } }, '金玉滿堂'));
     if (th === 'dragon') right.append(h('div', { class: 'r-herbs', style: { left: (L - 384) + 'px' }, innerHTML: ART.herbs }), h('div', { class: 'r-herbs', style: { left: (L - 196) + 'px' }, innerHTML: ART.herbs }));
-    if (bc) { left.append(h('div', { class: 'r-bunt', innerHTML: buntingSVG(L, bc) })); right.append(h('div', { class: 'r-bunt', innerHTML: buntingSVG(L, bc) })); }
     if (th === 'sports') { left.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(L) })); right.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(L) })); }
     // 前牆：黑板（老師視角時在鏡頭這邊，自動不畫；轉到學生視角才看得到）
-    const front = this.add('r-wall front bf', backAt(W, L, WH), W, WH);
+    const front = paint(this.add('r-wall front bf', backAt(W, L, WH), W, WH), 0);
     this.chalkEl = h('div', { class: 'r-chalk', title: '點一下編輯黑板', style: { width: Math.round(clamp(W * .64, 320, 820)) + 'px' }, onclick: () => Board.edit() });
     front.append(this.chalkEl);
     if (th === 'exam') front.append(at(Math.round(W * .1), h('div', { class: 'r-poster exam r-fp' }, '安靜作答')));
-    if (bc) front.append(h('div', { class: 'r-bunt', innerHTML: buntingSVG(W, bc) }));
+    if (gar) front.append(garland(0, W, 0, 48));
   },
   // 一整排大窗：底下是季節風景，上面一層是這個時段的天色，再上面是白色窗框（約每 110 一格）
   wband(x, w) {
     const pane = Math.max(1, Math.round(w / 110));
     const fr = h('div', { class: 'r-wframe' });
-    fr.style.backgroundImage = `repeating-linear-gradient(90deg, #fff9ee 0 7px, transparent 7px ${(w / pane).toFixed(1)}px), linear-gradient(transparent 36%, #fff9ee 36%, #fff9ee calc(36% + 6px), transparent calc(36% + 6px))`;
+    fr.style.backgroundImage = `repeating-linear-gradient(90deg, #f5f0e5 0 7px, transparent 7px ${(w / pane).toFixed(1)}px), linear-gradient(transparent 36%, #f5f0e5 36%, #f5f0e5 calc(36% + 6px), transparent calc(36% + 6px))`;
     return h('div', { class: 'r-wband', style: { left: Math.round(x) + 'px', width: Math.round(w) + 'px' } },
       h('div', { class: 'r-wview', style: { backgroundImage: svgURL(SCENE[this.season] || SCENE.summer) } }),
-      h('div', { class: 'r-wsky', style: { background: (LIGHTS[this.time] || {}).sky || 'transparent' } }), fr);
+      h('div', { class: 'r-wsky', style: { background: (LIGHTS[this.time] || {}).sky || 'transparent' } }), h('div', { class: 'r-glass' }), fr);
   },
   // 窗台：窗戶下緣的一塊木板（上面＋前緣），上面放盆栽和節日小東西
   sills() {
@@ -528,7 +538,9 @@ const Room = {
       const beam = this.add('r-beam', m3([wx, ya, top], ex, ey, ez), yb - ya, len);
       beam.style.background = `linear-gradient(${rgba(a * .55)}, ${rgba(0)} 92%)`;
     }
-    this.shadowShift = [-dir * RM.DH / t * .45, -k * RM.DH / t * .45];
+    // 影子落在陽光照過去的那一邊（窗戶在左邊，影子往右）；太長就截短，才不會蓋到隔壁
+    const sl = Math.min(RM.DH / t * .45, 34);
+    this.shadowShift = [dir * sl, k * sl + 4];
   },
   cubbies() {
     const n = clamp(D.students.length, 10, 40), cols = Math.ceil(n / 2);
@@ -538,15 +550,16 @@ const Room = {
     for (let i = 1; i <= cols * 2; i++) front.append(h('i', null, i <= n ? i : ''));
     this.cub = { x, w: cw };
   },
+  // 講桌（2026-11-03 使用者要求縮小）
   frontArea() {
-    const W = this.W, tw = Math.min(220, W - 140), y = this.L - RM.FRONT + 64;
-    this.tdesk = { x: W / 2 - tw / 2, y, w: tw };
-    this.box('r-td', W / 2 - tw / 2, y, tw, 70, RM.TD);
-    this.prop(ART.books, W / 2 - tw / 2 + 40, y + 40, 52, 30, RM.TD, 1);
-    if (D.info.ac !== false) this.bill('r-remote', W / 2 - tw / 2 + 92, y + 44, 22, 40, 1, RM.TD, { innerHTML: ART.remote, title: '冷氣遙控器', onclick: () => AC.remote() });
+    const W = this.W, tw = Math.min(RM.TDW, W - 140), y = this.L - RM.FRONT + 70, x = W / 2 - tw / 2;
+    this.tdesk = { x, y, w: tw, d: RM.TDD };
+    this.box('r-td', x, y, tw, RM.TDD, RM.TDH);
+    this.prop(ART.books, x + 32, y + 34, 44, 25, RM.TDH, 1);
+    if (D.info.ac !== false) this.bill('r-remote', x + 72, y + 36, 19, 34, 1, RM.TDH, { innerHTML: ART.remote, title: '冷氣遙控器', onclick: () => AC.remote() });
   },
   props() {
-    const { W, L, th } = this, td = this.tdesk, dz = RM.TD, dx = td.x + td.w - 46, dy = td.y + 44, cub = this.cub;
+    const { W, L, th } = this, td = this.tdesk, dz = RM.TDH, dx = td.x + td.w - 36, dy = td.y + 36, cub = this.cub;
     if (th !== 'reading') this.prop(ART.plant, 52, 64, 64, 120);
     const P = (...a) => this.prop(...a);
     switch (th) {
@@ -567,6 +580,9 @@ const Room = {
         this.add('r-rug', flatAt(14, 40, 0.6), 200, 130);
         P(ART.shelf, 70, 60, 100, 130); P(ART.beanbag, 160, 140, 70, 50); break;
     }
+    // 教室前面、講桌左邊的地板上放一個大擺飾（2026-11-03 使用者要求，例如端午節的龍舟；圖是 ChatGPT 設計的 FLOOR_ART）
+    const big = FLOOR_ART[th] ? [FLOOR_ART[th], 228, 133] : { halloween: [ART.pumpkin, 104, 91], sports: [ART.trophy, 76, 91], mom: [ART.carnations, 66, 99] }[th];
+    if (big) P(big[0], td.x - 150, L - 46, big[1], big[2]);
   },
   heralds(th, fine) {
     const L = UI.heralds.filter(x => stu(x.sid)), n = L.length;
@@ -609,8 +625,8 @@ const Room = {
       c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * (c.herald ? 17 : 12), 9, 20) * (c.herald ? 1 : Look.tagK);
       c.face = null; c.pts = null;
       if (c.herald) { c.x = r.left + r.width / 2 - V.left; c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
-      if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 25）
-        const [x, y] = pt(c.faceA); c.face = { x, y, r: c.kid.getBoundingClientRect().width * 25 / 110 };
+      if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 Toon.KID.R）
+        const [x, y] = pt(c.faceA); c.face = { x, y, r: c.kid.getBoundingClientRect().width * Toon.KID.R / 110 };
       }
       if (front) c.pts = c.path.map(pt);
       [c.x, c.y] = front ? c.pts[0] : pt(c.posTop);
@@ -622,6 +638,10 @@ const Room = {
       const id = el.dataset.id;
       el.classList.toggle('sel', UI.sel === id);
       el.classList.toggle('picked', UI.pickSeat === id || (UI.mode === 'multi' && UI.multi.has(id)));
+    }
+    for (const c of this.cells) if (c.ring) {
+      c.ring.classList.toggle('on', UI.sel === c.sid);
+      c.ring.classList.toggle('picked', UI.pickSeat === c.sid || (UI.mode === 'multi' && UI.multi.has(c.sid)));
     }
     this.fillBoard(); this.drawLabels(); this.moveTeacher(); this.drawTray(); this.drawCtl();
   },
@@ -695,7 +715,7 @@ const Room = {
     if (s) {
       const hp = this.cells.find(c => c.herald && c.sid === s.id);
       if (hp) { x = hp.X + 84; y = hp.Y + 50; look = [hp.X, hp.Y]; }
-      else if (seatOK(s)) { const p = this.seatPos(s.seat[0], s.seat[1]); x = p.cx + RM.CW / 2; y = p.y0 + 70; look = [p.cx, p.y0 + 40]; }
+      else if (seatOK(s)) { const p = this.seatPos(s.seat[0], s.seat[1]); x = p.cx + RM.CW / 2; y = p.y0 + 70; look = [p.cx, p.y0 + 50]; }
     }
     if (look) face = Math.atan2(look[0] - x, look[1] - y) * 180 / Math.PI;   // 轉身看著那位同學
     const k = [x, y, this.W, this.L].join(','), moved = k !== this.tKey, T = this.teacherT;
@@ -728,8 +748,8 @@ const Room = {
   freeSpot(x, y) {
     const r = 18, boxes = [], td = this.tdesk;
     x = clamp(x, 34, this.W - 34); y = clamp(y, 64, this.L - 24);
-    for (let i = 0; i < D.info.rows; i++) for (let j = 0; j < D.info.cols; j++) { const p = this.seatPos(i, j); boxes.push([p.cx - RM.DW / 2 - r, p.y0 + 20 - r, p.cx + RM.DW / 2 + r, p.y0 + 118 + r]); }
-    if (td) boxes.push([td.x - r, td.y - r, td.x + td.w + r, td.y + 70 + r]);
+    for (let i = 0; i < D.info.rows; i++) for (let j = 0; j < D.info.cols; j++) { const p = this.seatPos(i, j); boxes.push([p.cx - RM.DW / 2 - r, p.y0 + 20 - r, p.cx + RM.DW / 2 + r, p.y0 + 64 + RM.DD + r]); }
+    if (td) boxes.push([td.x - r, td.y - r, td.x + td.w + r, td.y + td.d + r]);
     for (const [x1, y1, x2, y2] of boxes) {
       if (x <= x1 || x >= x2 || y <= y1 || y >= y2) continue;
       const m = [x - x1, x2 - x, y - y1, y2 - y], i = m.indexOf(Math.min(...m));

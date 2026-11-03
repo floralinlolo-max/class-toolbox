@@ -27,7 +27,10 @@ const circles = (list, c) => list.map(([x, y, r]) => `<circle cx="${x}" cy="${y}
 const SKINS = ['#f8dcc5', '#f3c9a8', '#e2b08a'];
 const HAIRS = ['#292326', '#594139', '#292326', '#3a2c2a', '#594139', '#985b49', '#a87955', '#88766c'];
 const TIES = ['#ff8fab', '#ffd166', '#7fd1ff', '#b8f28a', '#c9a0ff'];
-const KID_SHIRT = ['#f4d8a5', '#a9d4e8', '#b7dccb', '#f3bfc6', '#c9bce8', '#f3be9c', '#f4f0e5', '#91afcb'];
+// 衣服：活潑、色彩飽和（2026-11-03 使用者要求；12 色照 ChatGPT 的建議：莓果紅、橘子橙、向日葵黃、草莓粉、珊瑚粉、薄荷綠、森林綠、天空藍、湖水藍、薰衣草紫、葡萄紫、寶藍）
+const KID_SHIRT = ['#e76f75', '#ef914c', '#e9be45', '#e98eae', '#e98278', '#63bfa0', '#398e72', '#55a9d6', '#4599ad', '#9b83c9', '#8066a8', '#426fbc'];
+// 3D 教室的同學（瓜皮頭、中性臉）：髮色、頭頂反光、膚色、眼睛、腮紅、嘴巴、領口，照 ChatGPT 的建議
+const KID3D = { hair: '#49352f', shine: '#80604d', skin: '#ffd9b8', collar: '#fff4df', face: { eye: '#382b27', ew: 3.2, eh: 3.5, blush: '#f58f91', blushA: .5, mouth: '#75483f' } };
 
 /* ---------- 頭髮（瀏海畫好後整個往上移 6，露出眼睛） ---------- */
 const BANGS = {

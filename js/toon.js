@@ -151,24 +151,26 @@ const Toon = (() => {
   };
   function head(S, H, R, L, o = {}) {
     const fine = S.fine, hc = L.hair, cv = S.V(H), hp = S.P(H), hd = hp[2];
-    const curly = L.front === 'curly';
-    // 後面一顆大一點的頭髮球，讓頭髮有厚度
-    S.put(hd - .3, S.ballSvg(add(H, [0, R * .1, -R * .12]), R + 2, hc));
-    // 耳朵
-    for (const sx of [-1, 1]) S.ball(add(H, [sx * R * .97, -R * .08, -R * .08]), R * .18, L.skin, 0);
+    const curly = L.front === 'curly', mush = L.front === 'mush', F = L.face || {};
+    if (!mush) {
+      // 後面一顆大一點的頭髮球，讓頭髮有厚度
+      S.put(hd - .3, S.ballSvg(add(H, [0, R * .1, -R * .12]), R + 2, hc));
+      // 耳朵（瓜皮頭蓋住耳朵，不用畫）
+      for (const sx of [-1, 1]) S.ball(add(H, [sx * R * .97, -R * .08, -R * .08]), R * .18, L.skin, 0);
+    }
     let s = S.ballSvg(H, R, L.skin);
     // 頭髮蓋住頭頂和後腦，前面留臉
-    s += capSvg(S, H, R, dirOf(20, 180), L.back === 'cap' || !L.back ? 104 : 112, hc);
-    // 臉：大家同一種表情（黑色圓眼睛＋白色亮點、粉紅腮紅、小小的微笑），照使用者給的參考圖
-    const face = [], k = R / 25, bl = ` opacity="${fine ? .8 : .65}"`;
-    face.push(patch(S, H, R, -15, -44, 4.6 * k, 2.8 * k, '#f7a1a6', bl), patch(S, H, R, -15, 44, 4.6 * k, 2.8 * k, '#f7a1a6', bl));
+    if (!mush) s += capSvg(S, H, R, dirOf(20, 180), L.back === 'cap' || !L.back ? 104 : 112, hc);
+    // 臉：大家同一種表情（黑色圓眼睛＋白色亮點、粉紅腮紅、小小的微笑），照使用者給的參考圖；同學的眼睛、腮紅、嘴巴顏色另外照 ChatGPT 的建議（L.face）
+    const face = [], k = R / 25, bl = ` opacity="${F.blushA || (fine ? .8 : .65)}"`, ew = F.ew || 3.3, eh = F.eh || 4.3, ec = F.eye || '#231d20', bc = F.blush || '#f7a1a6';
+    face.push(patch(S, H, R, -15, -44, 4.6 * k, 2.8 * k, bc, bl), patch(S, H, R, -15, 44, 4.6 * k, 2.8 * k, bc, bl));
     const eye = (lon, big) => {
-      const e = patch(S, H, R, 0, lon, (big ? 3.8 : 3.3) * k, (big ? 5 : 4.3) * k, '#231d20');
+      const e = patch(S, H, R, 0, lon, (big ? ew + .5 : ew) * k, (big ? eh + .7 : eh) * k, ec);
       if (!e) return '';
-      const h1 = spot(S, H, R, 0, lon, 1 * k, 1.5 * k), h2 = spot(S, H, R, 0, lon, -.9 * k, -1.7 * k);
+      const h1 = spot(S, H, R, 0, lon, 1 * k, 1.5 * k * eh / 4.3), h2 = spot(S, H, R, 0, lon, -.9 * k, -1.7 * k * eh / 4.3);
       return e + `<circle cx="${f1(h1[0])}" cy="${f1(h1[1])}" r="${f1(1.35 * k)}" fill="#fff"/>` + (fine ? `<circle cx="${f1(h2[0])}" cy="${f1(h2[1])}" r="${f1(.55 * k)}" fill="#fff" opacity=".85"/>` : '');
     };
-    const mouth = curve(S, H, R, [[-25, -7], [-28.5, 0], [-25, 7]], '#9b4f4b', 1.5 * k);
+    const mouth = curve(S, H, R, [[-25, -7], [-28.5, 0], [-25, 7]], F.mouth || '#9b4f4b', 1.5 * k);
     face.push(`<g class="fn"><g class="eyes">${eye(-23)}${eye(23)}</g>${mouth}</g>`);
     if (fine && o.expr !== false) {
       const arc = lon => curve(S, H, R, [[-1, lon - 9], [5, lon], [-1, lon + 9]], '#231d20', 2.3 * k);
@@ -177,9 +179,16 @@ const Toon = (() => {
     }
     s += face.join('');
     if (L.acc === 'beard') s += capSvg(S, H, R + .3, dirOf(-48, 0), 42, hc) + patch(S, H, R + .5, -22, 0, 6 * k, 2 * k, hc);
+    // 瓜皮頭（2026-11-03 使用者要求，形狀照 ChatGPT 的建議）：比頭大一圈的圓形髮罩，前面剪在眼睛上方、兩側包住耳朵到臉頰外側、後面到脖子上緣
+    // 做法：髮罩球（半徑 1.1 倍）上一個往後傾的球冠——中心在後上方緯度 60°、角半徑 100°，邊緣在前面緯度 20°、兩側約 −12°、後面 −40°
+    if (mush) {
+      const Hh = add(H, [0, R * .03, -R * .02]), Rh = R * 1.1;
+      s += capSvg(S, Hh, Rh, dirOf(60, 180), 100, hc);
+      if (fine) s += curve(S, Hh, Rh + .3, [[58, -32], [67, 0], [58, 32]], L.shine || shade(hc, .22), 1.7 * k, .05);   // 頭頂的反光（ChatGPT 建議 #80604D）
+    }
     // 瀏海
-    if (!curly) for (const [la, lo, a] of BANG_CAPS[L.front] || BANG_CAPS.clump) s += capSvg(S, H, R + .2, dirOf(la, lo), a, hc);
-    if (fine && !curly) s += curve(S, H, R + .3, [[58, -32], [70, -4], [62, 24]], shade(hc, .22), 2.2 * k, .05);
+    else if (!curly) for (const [la, lo, a] of BANG_CAPS[L.front] || BANG_CAPS.clump) s += capSvg(S, H, R + .2, dirOf(la, lo), a, hc);
+    if (fine && !curly && !mush) s += curve(S, H, R + .3, [[58, -32], [70, -4], [62, 24]], shade(hc, .22), 2.2 * k, .05);
     // 眼鏡
     if (L.glasses) {
       for (const lon of [-23, 23]) s += patch(S, H, R + .6, 0, lon, 6.6 * k, 6.2 * k, 'none', ` stroke="#4a3a3a" stroke-width="${f1(1.4 * k)}"`, .2);
@@ -244,15 +253,17 @@ const Toon = (() => {
   }
 
   /* ---------- 衣服的小東西 ---------- */
-  function collar(S, B, r, kind, shirt) {   // 畫在身體上方那顆球的表面
+  function collar(S, B, r, kind, shirt, wc = '#ffffff') {   // 畫在身體上方那顆球的表面；wc 是領子的顏色
     const dk = shade(shirt, -.16);
-    if (kind === 0) return capSvg(S, B, r + .3, dirOf(42, -22), 18, '#ffffff') + capSvg(S, B, r + .3, dirOf(42, 22), 18, '#ffffff');
-    if (kind === 1) return capSvg(S, B, r + .3, dirOf(36, 0), 32, '#ffffff') + capSvg(S, B, r + .5, dirOf(30, 0), 14, shirt);
+    if (kind === 0) return capSvg(S, B, r + .3, dirOf(42, -22), 18, wc) + capSvg(S, B, r + .3, dirOf(42, 22), 18, wc);
+    if (kind === 1) return capSvg(S, B, r + .3, dirOf(36, 0), 32, wc) + capSvg(S, B, r + .5, dirOf(30, 0), 14, shirt);
     if (kind === 2) return capSvg(S, B, r + .3, dirOf(55, 0), 24, dk);
-    return capSvg(S, B, r + .3, dirOf(46, 0), 16, '#ffffff');
+    return capSvg(S, B, r + .3, dirOf(46, 0), 16, wc);
   }
 
   /* ---------- 坐著的同學 ---------- */
+  // 頭的大小、高度（2026-11-03 使用者要求頭縮小：ChatGPT 建議頭寬約桌面寬的 0.36）；room.js 照這個算臉的位置
+  const KID = { R: 17.5, Y: 85, SY: 105 };
   function kid(L, theta, e, o = {}) {
     const S = painter(theta, e, o.fine !== false), sh = L.shirt, sk = L.skin, pants = '#6f8fbf';
     // 腳（大多藏在桌子下面）
@@ -263,7 +274,7 @@ const Toon = (() => {
     }
     // 身體
     const B = [0, 59, -1];
-    S.put(S.P([0, 50, -1])[2], S.capsSvg([0, 41, -1], 14.5, B, 13, sh) + collar(S, B, 13, L.collar, sh)
+    S.put(S.P([0, 50, -1])[2], S.capsSvg([0, 41, -1], 14.5, B, 13, sh) + collar(S, B, 13, L.collar, sh, L.collarC)
       + (L.collar === 1 ? S.ballSvg([0, 59, 11.6], 2.8, '#e45b6b') : '')
       + (o.theme === 'mom' ? S.ballSvg([-6, 55, 12], 3.4, '#e63950') : '') + (o.theme === 'dragon' ? S.ballSvg([0, 52, 13.5], 3.4, '#f6c445') : ''));
     if (L.collar === 2) S.ball([0, 67, -11], 8, shade(sh, -.12));
@@ -273,19 +284,20 @@ const Toon = (() => {
       S.caps([sx * 18, 55.5, 8], 4.2, [sx * 11, 58.5, 25], 4, sk);
       S.ball([sx * 10.5, 59, 26], 4.6, sk);
     }
-    head(S, [0, 94, 0], 25, L, o);
-    return S.done('-55 -235 110 295', o.style || '');
+    head(S, [0, KID.Y, 0], KID.R, L, o);
+    // 畫布下緣在腳底上面一點（-2），立牌才不會穿過地板、影子和桌下的圓圈，3D 前後順序才不會亂（不然後排同學的椅背會蓋在胸前）
+    return S.done('-55 -235 110 233', o.style || '');
   }
   /* ---------- 站著舉牌的同學（牌子另外是一片 3D 平面） ---------- */
   function standKid(L, theta, e, o = {}) {
     const S = painter(theta, e, o.fine !== false), sh = L.shirt, sk = L.skin, pants = '#6f8fbf';
     for (const sx of [-1, 1]) { S.caps([sx * 6.5, 54, 0], 6.5, [sx * 6.5, 9, 1], 5.6, pants); S.ball([sx * 6.5, 5.5, 4], 5.6, '#eef1f4'); }
     const B = [0, 80, 0];
-    S.put(S.P([0, 70, 0])[2], S.capsSvg([0, 62, 0], 14, B, 13, sh) + collar(S, B, 13, L.collar, sh));
+    S.put(S.P([0, 70, 0])[2], S.capsSvg([0, 62, 0], 14, B, 13, sh) + collar(S, B, 13, L.collar, sh, L.collarC));
     S.caps([26, 70, 8], 2.4, [26, 184, 8], 2.4, '#b07a43');   // 牌子的木棍（在頭的旁邊）
     S.caps([14, 83, 0], 5.6, [21, 88, 5], 5, sh); S.caps([21, 88, 5], 4.2, [25, 96, 8], 4, sk); S.ball([25.5, 97, 8], 4.6, sk, .3);   // 右手握木棍
     S.caps([-14, 83, 0], 5.6, [-17, 72, 2], 5, sh); S.caps([-17, 72, 2], 4.2, [-18.5, 64, 4], 4, sk); S.ball([-18.5, 62, 4], 4.6, sk);
-    head(S, [0, 115, 0], 25, L, o);
+    head(S, [0, KID.SY, 0], KID.R, L, o);
     return S.done('-55 -260 110 330', o.style || '');
   }
   /* ---------- 老師（站著；右手兩種：放下 arm、舉起來揮手 arm2） ---------- */
@@ -322,5 +334,5 @@ const Toon = (() => {
     head(S, [0, 160, 0], 31, L, Object.assign({ theme: ['cap', 'knit', 'beret'].includes(p.acc) ? '' : o.theme, seed: 1 }, o));
     return S.done('-65 -320 130 390', o.style || '');
   }
-  return { kid, standKid, teacher };
+  return { kid, standKid, teacher, KID };
 })();
