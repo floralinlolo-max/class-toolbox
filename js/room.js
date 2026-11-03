@@ -5,7 +5,8 @@
 
 // 2026-11-03：課桌加大（DW、DD）、同學頭縮小；講桌縮小（TDW、TDD、TDH）。同日第二次：座位往中間聚攏（CW、CD 縮小，牆邊走道 SIDE、BACK 加寬），名牌靠 placeLabels 避開不重疊。
 // 同日第三次（使用者要名牌再大、從教室後面看得清楚）：畫面通常是高度不夠（教室被上下塞滿、左右有空），所以把左右行距 CW 拉大給名牌位子，教室在畫面上不會變小
-const RM = { CW: 250, CD: 176, SIDE: 80, BACK: 150, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
+// 同日第四次（使用者說整班太寬）：學生往中間集中（CW 180），兩邊走道 SIDE 加寬；名牌改靠多往上下找空位、名牌變窄來放大
+const RM = { CW: 180, CD: 176, SIDE: 110, BACK: 150, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
 const svgURL = s => 'url("data:image/svg+xml,' + encodeURIComponent(s) + '")';
 const THEMES = {
   auto: { name: '自動', desc: '依日期換節日佈景', sw: ['#e8e1d3', '#9fd3c1', '#f6b93b'] },
@@ -65,7 +66,9 @@ function billAt(x, y, w, ht, deg, z, yaw) {
 }
 // 鏡頭：yaw 左右轉、tilt 俯角（越小越從上面看）、zoom 放大；記在這台電腦
 const EYE0 = { yaw: 0, tilt: RM.TILT, zoom: 1 };
-const EYES = { teacher: { yaw: 0, tilt: RM.TILT }, student: { yaw: 180, tilt: 64 } };
+// 鏡頭最低只到俯角 62：再低時一排排同學在畫面上擠在一起，名牌沒有地方放（使用者要求每個角度都看得清楚名牌）
+const TILT_MAX = 62;
+const EYES = { teacher: { yaw: 0, tilt: RM.TILT }, student: { yaw: 180, tilt: 58 } };
 
 /* ---------- 教室裡的東西（全部自己畫的 SVG） ---------- */
 const BAT_PATH = 'M30 8C24 6 14 2 2 6c6 3 7 7 6 11 5-4 10-3 13 1 2-5 6-6 9-4 3-2 7-1 9 4 3-4 8-5 13-1-1-4 0-8 6-11-12-4-22 0-28 2zM26 7l1-6 2 4h2l2-4 1 6z';
@@ -199,7 +202,7 @@ const Herald = {
 /* ---------- 3D 教室 ---------- */
 const Room = {
   view: null, key: '', tKey: '', lastMin: -1, visit: null, sayFor: null, bbs: [],
-  eye: (() => { let o = {}; try { o = JSON.parse(localStorage.getItem('bxbox-cam') || '{}') || {}; } catch (e) { } return Object.assign({}, EYE0, o); })(),
+  eye: (() => { let o = {}; try { o = JSON.parse(localStorage.getItem('bxbox-cam') || '{}') || {}; } catch (e) { } const e = Object.assign({}, EYE0, o); e.tilt = clamp(+e.tilt || RM.TILT, 25, TILT_MAX); return e; })(),
   theme() { const t = D.info.theme || 'auto'; return t === 'auto' || !THEMES[t] ? autoTheme() : t; },
   seatPos(r, c) { return { cx: RM.SIDE + (D.info.cols - 1 - c) * RM.CW + RM.CW / 2, y0: RM.BACK + (D.info.rows - 1 - r) * RM.CD }; },
 
@@ -261,7 +264,7 @@ const Room = {
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       if (!d.moved && Math.hypot(dx, dy) < 6) return;
       if (!d.moved) { d.moved = true; try { this.view.setPointerCapture(e.pointerId); } catch (_) { } }
-      this.eye.yaw = d.yaw - dx * .35; this.eye.tilt = clamp(d.tilt - dy * .25, 25, 80);   // 教室跟著滑鼠轉
+      this.eye.yaw = d.yaw - dx * .35; this.eye.tilt = clamp(d.tilt - dy * .25, 25, TILT_MAX);   // 教室跟著滑鼠轉
     }
     this.view.classList.add('dragging');
     this.queueEye();
@@ -499,10 +502,9 @@ const Room = {
   wband(x, w) {
     const pane = Math.max(1, Math.round(w / 110));
     const fr = h('div', { class: 'r-wframe' });
-    // 窗框細一點（斜斜看過去時窗框太密會蓋掉風景）
+    // 2026-11-03 第四次（使用者要求）：窗外不放風景，只有水藍透明感的玻璃（色碼照 ChatGPT），上面一層時段天色、白色窗框
     fr.style.backgroundImage = `repeating-linear-gradient(90deg, #f5f0e5 0 4px, transparent 4px ${(w / pane).toFixed(1)}px), linear-gradient(transparent 36%, #f5f0e5 36%, #f5f0e5 calc(36% + 4px), transparent calc(36% + 4px))`;
     return h('div', { class: 'r-wband', style: { left: Math.round(x) + 'px', width: Math.round(w) + 'px' } },
-      h('div', { class: 'r-wview', style: { backgroundImage: svgURL(SCENE[this.season] || SCENE.summer) } }),
       h('div', { class: 'r-wsky', style: { background: (LIGHTS[this.time] || {}).sky || 'transparent' } }), h('div', { class: 'r-glass' }), fr);
   },
   // 窗台：窗戶下緣的一塊木板（上面＋前緣），上面放盆栽和節日小東西
@@ -625,7 +627,7 @@ const Room = {
     for (const c of this.cells) {
       const r = c.anchor.getBoundingClientRect();
       // 名牌大小可在設定「外觀」選；舉牌同學的名牌本來就比較大，放大會蓋到牌子上的字，所以不跟著放大
-      c.fs = c.herald ? clamp(Math.max(r.width, r.height * 1.6) / c.aw * 17, 9, 20) : clamp(Math.max(r.width, r.height * 1.6) / c.aw * 20, 13, 26) * Look.tagK;   // 名牌照桌子在畫面上的大小，最小 13px×大小設定（大＝19.5px）
+      c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * 20, 13, 26) * Look.tagK;   // 名牌照桌子（舉牌的照牌子）在畫面上的大小，最小 13px×大小設定（大＝19.5px）
       c.face = null; c.pts = null;
       if (c.herald) { c.ax = c.x = r.left + r.width / 2 - V.left; c.ay = c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
       if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 Toon.KID.R）
@@ -681,10 +683,12 @@ const Room = {
       const p = todo[i], q = todo[j];
       if (Math.abs(p.ay - q.ay) >= (p.h0 + q.h0) / 2) continue;
       const k = (Math.abs(p.ax - q.ax) - G) / ((p.w0 + q.w0) / 2);
+      if (k < .55) continue;   // 幾乎疊在同一個位置（例如舉牌的同學站在別人座位旁）：縮小也沒用，交給後面一個往上下挪
       if (k < p.cap) p.cap = k; if (k < q.cap) q.cap = k;
     }
     for (const c of todo) {
-      const W0 = c.w0, H0 = c.h0, A = [c.ax, c.ay], minS = Math.min(1, 6 / c.fs), cap = Math.max(minS, Math.floor(c.cap * 100) / 100);
+      const W0 = c.w0, H0 = c.h0, A = [c.ax, c.herald ? c.ay - H0 / 2 - 3 : c.ay],   // 舉牌的名牌整個在牌子上面，不蓋到牌子的字
+            minS = Math.min(1, 6 / c.fs), cap = Math.max(minS, Math.floor(c.cap * 100) / 100);
       const reach = W0 * .6 + 40, near = faces.map((f, i) => i).filter(i => faces[i][2] > A[0] - reach && faces[i][0] < A[0] + reach);
       const nearP = placed.filter(p => p[2] > A[0] - reach - W0 && p[0] < A[0] + reach + W0);
       let best = null, bestHit = null;
@@ -695,13 +699,15 @@ const Room = {
           const [, B, C] = c.pts;
           if (c.face) { const minY = c.face.y + c.face.r * .62 + ht / 2 + 1; path.push(...seg(A, [c.face.x, c.face.y], []).filter(p => p[1] >= minY)); }
           seg(A, B, path); seg(B, C, path);
-        } else { seg(A, [A[0], A[1] - ht * 1.8], path); seg(A, [A[0], A[1] + ht * 1.2], path); }
+        } else { seg(A, [A[0], A[1] - ht * 2.6], path); seg(A, [A[0], A[1] + ht * 1.2], path); }
+        // 原位附近都放不下時，先往上下更遠的地方找（移得遠扣分多），找不到才縮小：縮到很小的名牌從教室後面看不清楚
+        seg(path[path.length - 1], [A[0], A[1] - ht * 4.5], path, 4); seg(A, [A[0], A[1] + ht * 2.5], path, 4);
         let pick = null;
         for (const dx of [0, -.18, .18, -.34, .34]) {
           for (const [px, py] of path) {
             const x = px + dx * w, y = py, b = [x - w / 2, y - ht / 2, x + w / 2, y + ht / 2], bb = [b[0] - G, b[1] - G, b[2] + G, b[3] + G];
             let ov = 0; for (const p of nearP) ov += area(bb, p);
-            let v = 10 * Math.hypot(x - A[0], y - A[1]) / ht + 25 * (cap - s) / .26;
+            let v = 10 * Math.hypot(x - A[0], y - A[1]) / ht + 25 * (cap - s) / .18;   // 縮小比移位置扣分多：寧可往上下挪也盡量不縮
             for (const i of near) v += 300 * area(b, faces[i]) / fa[i];
             if (ov > 0) { if (!bestHit || ov < bestHit.ov || (ov === bestHit.ov && v < bestHit.v)) bestHit = { x, y, b, v, s, ov }; continue; }
             if (!pick || v < pick.v) pick = { x, y, b, v, s };
@@ -892,12 +898,10 @@ const Room = {
     modal('教室佈景', c => {
       const lt = Light.get(), seg = (k, cur, opts) => h('div', { class: 'seg' }, opts.map(([v, t]) => h('button', { class: cur === v ? 'on' : '', onclick: () => { Light.set(k, v); refresh(); c.rebuild(); } }, t)));
       c.body.append(
-        h('h3', { class: 'set-h' }, '季節與光線'),
-        h('div', { class: 'lk-row' }, h('span', { class: 'lk-l' }, '窗外季節'), h('div', { class: 'lk-c' },
-          seg('season', lt.season, [['auto', '自動'], ...Object.entries(SEASONS)]), h('ul', { class: 'lk-notes' }, h('li', null, '自動：3～5 月春天、6～8 月夏天、9～11 月秋天、12～2 月冬天。')))),
+        h('h3', { class: 'set-h' }, '光線'),
         h('div', { class: 'lk-row' }, h('span', { class: 'lk-l' }, '陽光'), h('div', { class: 'lk-c' },
           seg('time', lt.time, [['auto', '自動'], ...Object.entries(LIGHTS).map(([k, v]) => [k, v.name]), ['off', '不要']]),
-          h('ul', { class: 'lk-notes' }, h('li', null, '自動：早上陽光從左邊窗戶照進來，下午、傍晚從右邊，傍晚比較橘。'), h('li', null, '季節和陽光只記在這台電腦。')))),
+          h('ul', { class: 'lk-notes' }, h('li', null, '自動：早上陽光從左邊窗戶照進來，下午、傍晚從右邊，傍晚比較橘。'), h('li', null, '陽光只記在這台電腦。')))),
         h('div', { class: 'lk-row' }, h('span', { class: 'lk-l' }, '同學的衣服'), h('div', { class: 'lk-c' },
           h('button', { class: 'btn', onclick: () => { D.info.outfitSeed = uid(); save(); refresh(); } }, '🎲 換一組衣服顏色'),
           h('ul', { class: 'lk-notes' }, h('li', null, '有分組時，衣服是小組的顏色。')))),

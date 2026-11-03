@@ -22,12 +22,12 @@
 /* 牆面、牆裙配色照 ChatGPT 建議的色碼；2026-11-03 起照佈景主題換色（room.js 的 walls() 依 THEME_WALL 設 --wallc、--wain、--wline、--wbase） */
 .r-wall { --wain: #b9cdb9; --wallc: #f5f0e5; --wline: #d6c6a9; --wbase: #93a893;
   background: linear-gradient(to top, var(--wbase) 0 6px, var(--wain) 6px 92px, var(--wline) 92px 98px, var(--wallc) 98px); }
-/* 兩側的大片窗戶：季節風景（橫向重複）＋時段天色＋水藍透明玻璃（2026-11-03 使用者要求，色碼照 ChatGPT）＋米白窗框 */
-.r-wband { position: absolute; top: 34px; height: 160px; border: 8px solid #f5f0e5; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #d8d2c5, 0 3px 8px rgba(90, 130, 145, .12); }
-/* 玻璃要淡到看得清楚窗外風景，清爽明亮（同日第二次，使用者要求；色碼照 ChatGPT），窗外風景也調亮一點 */
+/* 兩側的大片窗戶：水藍透明感的玻璃（2026-11-03 第四次，使用者要求窗外不要風景；色碼照 ChatGPT：玻璃 rgba(126,211,235,.38)、白色斜反光、米白窗框） */
+.r-wband { position: absolute; top: 34px; height: 160px; border: 8px solid #f5f0e5; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #d8d2c5, 0 3px 8px rgba(90, 130, 145, .12);
+  background: linear-gradient(#f2fbfe, #e3f6fc 60%, #d4f0f9); }
 .r-glass { position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(115deg, transparent 0 46px, rgba(255, 255, 255, .32) 46px 49px, rgba(255, 255, 255, .08) 49px 54px, transparent 54px 150px),
-    linear-gradient(125deg, rgba(205, 239, 248, .2), rgba(148, 215, 232, .12) 45%, rgba(218, 244, 250, .18)); }
+  background: repeating-linear-gradient(115deg, transparent 0 40px, rgba(255, 255, 255, .6) 40px 44px, transparent 44px 54px, rgba(255, 255, 255, .45) 54px 56px, transparent 56px 160px),
+    linear-gradient(160deg, rgba(150, 222, 242, .42), rgba(126, 211, 235, .34) 50%, rgba(104, 196, 228, .44)); }
 /* 節日掛飾（GARLAND）：一段 200×100 的圖橫向重複 */
 .r-garland { position: absolute; pointer-events: none; background-repeat: repeat-x; background-position: left top; z-index: 1; }
 .r-wdrop { position: absolute; top: 26px; height: 92px; transform: translateX(-50%); pointer-events: none; z-index: 1; }
@@ -39,7 +39,6 @@
 .r-ring.on { opacity: 1; animation: ringPulse 1.4s ease-in-out infinite alternate; }
 .r-ring.picked { opacity: 1; background: rgba(255, 214, 90, .35); border-color: rgba(240, 180, 40, .95); box-shadow: 0 0 14px rgba(246, 185, 59, .5); }
 @keyframes ringPulse { from { box-shadow: 0 0 6px var(--ringc, #4d956d); } to { box-shadow: 0 0 22px 4px var(--ringc, #4d956d); } }
-.r-wview { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; background-position: left bottom; filter: brightness(1.12) saturate(1.08) contrast(.96); }
 .r-wsky, .r-wframe { position: absolute; inset: 0; }
 /* 立體窗台（木板上面和前緣） */
 .r-sill { background: #c79565; box-shadow: inset 0 3px 0 #e7bf8d; }
@@ -73,10 +72,10 @@
 /* 2026-11-03 名牌明顯一點：純白底、外面一圈深綠細框、影子加深；被點到的同學名牌變彩色底白字，顏色跟著佈景換（--selc、--seld，色碼照 ChatGPT） */
 .r-lw .seat { background: #fff; color: #594c43; box-shadow: 0 0 0 .07em rgba(47, 74, 63, .5), 0 .12em .35em rgba(40, 30, 10, .35); }
 /* 同日第三次：投影時從教室最後面也看得清楚（配色照 ChatGPT：白底、深綠黑字、灰綠外框、座號深綠圓圈白色粗字）；左右留白縮一點，名牌不會太寬 */
-.r-lw .seat { color: #263b32; border-color: #a9bdaf; border-width: .1em; font-weight: 800; padding: .1em .42em .1em .1em; gap: .22em;
+.r-lw .seat { color: #263b32; border-color: #a9bdaf; border-width: .1em; font-weight: 800; padding: .08em .36em .08em .08em; gap: .16em;
   box-shadow: 0 .12em .35em rgba(38, 65, 49, .28); }
 .r-lw .seat .no { background: #285e43; color: #fff; font-weight: 900; }
-.r-lw .seat .nm { letter-spacing: .02em; }
+.r-lw .seat .nm { letter-spacing: 0; }
 .r-lw .seat.sel { outline: none; background: var(--selc, #589b75); border-color: #fff; color: #fff; box-shadow: 0 0 0 .08em var(--seld, #326c50), 0 0 .7em var(--selc, #589b75); }
 .r-lw .seat.sel .no { background: #fff; color: var(--seld, #326c50); }
 .seat.hwm-miss { border-color: var(--minus); background: #ffe6e2; }
