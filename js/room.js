@@ -3,8 +3,8 @@
    座標都用「地板座標」：x 向右、y 往前（靠近鏡頭＝講桌那邊）、z 往上；鏡頭站在講台看教室，所以第 1 排在最前面、左右和老師看到的一樣。
    人物圖案在 art.js。 */
 
-// 2026-11-03：課桌加大（DW、DD）、同學頭縮小，座位左右前後再拉開（CW、CD），名牌才放得下、從前面看不會疊在一起；講桌縮小（TDW、TDD、TDH）
-const RM = { CW: 190, CD: 186, SIDE: 84, BACK: 124, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
+// 2026-11-03：課桌加大（DW、DD）、同學頭縮小；講桌縮小（TDW、TDD、TDH）。同日第二次：座位往中間聚攏（CW、CD 縮小，牆邊走道 SIDE、BACK 加寬），名牌靠 placeLabels 避開不重疊
+const RM = { CW: 170, CD: 172, SIDE: 124, BACK: 150, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
 const svgURL = s => 'url("data:image/svg+xml,' + encodeURIComponent(s) + '")';
 const THEMES = {
   auto: { name: '自動', desc: '依日期換節日佈景', sw: ['#e8e1d3', '#9fd3c1', '#f6b93b'] },
@@ -366,12 +366,14 @@ const Room = {
     Object.assign(this.floor.style, { width: W + 'px', height: L + 'px', transform: this.floorTf(this.eye) });
     Object.assign(this.cam.style, { width: W + 'px', height: L + 'px', perspective: Math.round(Math.max(1700, L * 1.55)) + 'px' });
     this.view.dataset.theme = th;
+    const sc = THEME_SEL[th] || THEME_SEL.none;   // 點到的同學名牌、桌下圓圈的顏色跟著佈景換
+    for (const [k, v] of Object.entries({ '--selc': sc.tag, '--seld': sc.edge, '--ringf': sc.fill, '--ringc': sc.ring })) this.view.style.setProperty(k, v);
     this.view.classList.toggle('fine', fine);
     this.view.classList.toggle('behind', Math.cos(this.eye.yaw * Math.PI / 180) < 0);
     this.cells = []; this.bbs = []; this.toons = []; this.shadowShift = [16, 14];
     this.time = Light.time(); this.season = Light.season(); this.lightKey = this.time + this.season;
     // 木地板：拼貼圖壓扁成長條木板（一片約 20×80）
-    if (D.info.floor !== 'terrazzo') Object.assign(this.floor.style, { backgroundImage: svgURL(SCENE.floor), backgroundSize: '320px 84px', backgroundRepeat: 'repeat' });
+    if (D.info.floor !== 'terrazzo') Object.assign(this.floor.style, { backgroundImage: svgURL(SCENE.floor), backgroundSize: '120px 480px', backgroundRepeat: 'repeat' });   // 直向木板
     else Object.assign(this.floor.style, { backgroundImage: '', backgroundSize: '', backgroundRepeat: '' });
     this.tintEl.style.background = (LIGHTS[this.time] || {}).tint || 'transparent';
     this.walls(); this.sunlight(); this.sills(); this.cubbies(); this.frontArea(); this.props(); this.wallsFacing();
@@ -580,9 +582,9 @@ const Room = {
         this.add('r-rug', flatAt(14, 40, 0.6), 200, 130);
         P(ART.shelf, 70, 60, 100, 130); P(ART.beanbag, 160, 140, 70, 50); break;
     }
-    // 教室前面、講桌左邊的地板上放一個大擺飾（2026-11-03 使用者要求，例如端午節的龍舟；圖是 ChatGPT 設計的 FLOOR_ART）
+    // 教室右前方（老師視角畫面的右下角、門的前面）的地板上放一個大擺飾（2026-11-03 使用者要求，例如端午節的龍舟；圖是 ChatGPT 設計的 FLOOR_ART）
     const big = FLOOR_ART[th] ? [FLOOR_ART[th], 228, 133] : { halloween: [ART.pumpkin, 104, 91], sports: [ART.trophy, 76, 91], mom: [ART.carnations, 66, 99] }[th];
-    if (big) P(big[0], td.x - 150, L - 46, big[1], big[2]);
+    if (big) P(big[0], W - 40 - big[1] / 2, L - 56, big[1], big[2]);
   },
   heralds(th, fine) {
     const L = UI.heralds.filter(x => stu(x.sid)), n = L.length;
@@ -624,12 +626,12 @@ const Room = {
       // 名牌大小可在設定「外觀」選；舉牌同學的名牌本來就比較大，放大會蓋到牌子上的字，所以不跟著放大
       c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * (c.herald ? 17 : 12), 9, 20) * (c.herald ? 1 : Look.tagK);
       c.face = null; c.pts = null;
-      if (c.herald) { c.x = r.left + r.width / 2 - V.left; c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
+      if (c.herald) { c.ax = c.x = r.left + r.width / 2 - V.left; c.ay = c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
       if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 Toon.KID.R）
         const [x, y] = pt(c.faceA); c.face = { x, y, r: c.kid.getBoundingClientRect().width * Toon.KID.R / 110 };
       }
       if (front) c.pts = c.path.map(pt);
-      [c.x, c.y] = front ? c.pts[0] : pt(c.posTop);
+      [c.ax, c.ay] = [c.x, c.y] = front ? c.pts[0] : pt(c.posTop);
     }
     this.placeLabels();
   },
@@ -656,50 +658,72 @@ const Room = {
     }
     this.placeLabels();
   },
-  // 名牌跟著桌子在畫面上的位置；越下面（越靠近鏡頭）疊在越上層
-  // 正面看時，名牌先放在自己桌面的後緣（手前）；會擋到別人的臉或疊到別的名牌，就往上移到胸前（不超過下巴），
-  // 再不行就往下移到桌子前面板。都會擋到就挑擋最少的。前排先放（離鏡頭近，最不會被擋）
+  /* 擺名牌（2026-11-03 改寫，使用者要求：各種角度名牌都不能疊在一起，正面看時尤其不要疊）
+     離鏡頭近（畫面下方）的先放；每個名牌在自己的候選位置裡挑：一定不能疊到已經放好的名牌，再看蓋到臉多少、離原位多遠、縮多小。
+     候選位置：正面看＝桌面後緣（手前）→ 往上到下巴下面、往下到桌面前緣、桌子前面板；側面、後面看＝頭頂上方往上、往下；舉牌＝牌子上方往上。
+     每個位置也試左右偏一點。原本大小放不下就一次縮 1 成（字最小 6px），真的都放不下才挑疊最少的 */
   placeLabels() {
     const list = this.cells.filter(c => c.lw);
     for (const c of list) {
-      if (c.x == null) { c.lw.style.display = 'none'; continue; }
+      if (c.ax == null) { c.lw.style.display = 'none'; continue; }
       Object.assign(c.lw.style, { display: '', fontSize: c.fs.toFixed(1) + 'px' });
     }
     // 要保護的是五官：眼睛在頭的中心、嘴巴在中心下面約 0.4 個半徑，上面是瀏海
     const faces = this.cells.filter(c => c.face).map(({ face: f }) => [f.x - f.r * .62, f.y - f.r * .3, f.x + f.r * .62, f.y + f.r * .62]);
     const area = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
-    const seg = (p, q, out) => { const n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 3)); for (let j = 1; j <= n; j++) out.push([p[0] + (q[0] - p[0]) * j / n, p[1] + (q[1] - p[1]) * j / n]); return out; };
-    const fa = faces.map(f => (f[2] - f[0]) * (f[3] - f[1])), placed = [];
-    // 分數越低越好：蓋到臉（蓋滿一張臉 300 分，最要避免）＋疊到別的名牌＋離桌面後緣越遠＋縮越小
-    const score = (b, moved, ht, s, near, nearP) => {
-      let v = 10 * moved / ht + 25 * (1 - s) / .26;
-      for (const i of near) v += 300 * area(b, faces[i]) / fa[i];
-      for (const p of nearP) v += 40 * area(b, p) / ((b[2] - b[0]) * (b[3] - b[1]));
-      return v;
-    };
-    for (const c of list.slice().reverse()) {
-      c.sc = 1;
-      if (c.x == null || !c.pts) continue;
-      const W0 = c.lw.offsetWidth, H0 = c.lw.offsetHeight, [A, B, C] = c.pts;
-      // 只比對左右範圍內的臉和名牌，轉動時才不會慢
-      const xs = [A[0], B[0], C[0], c.face ? c.face.x : A[0]], lo = Math.min(...xs) - W0 / 2, hi = Math.max(...xs) + W0 / 2;
-      const near = faces.map((f, i) => i).filter(i => faces[i][2] > lo && faces[i][0] < hi), nearP = placed.filter(p => p[2] > lo && p[0] < hi);
-      let pick = null;
-      // 擠到放不下時名牌縮小一點（字不小於 7.5px）；名牌選「大」「特大」時最多縮到 0.86 倍，投影才看得清楚（使用者要求名牌放大）
-      for (const s of [1, .86, .74]) {
-        if (s < 1 && (c.fs * s < 7.5 || (Look.tagK > 1 && s < .86))) break;
-        const w = W0 * s, ht = H0 * s, cands = [A];
-        if (c.face) { const minY = c.face.y + c.face.r * .62 + ht / 2 + 1; cands.push(...seg(A, [c.face.x, c.face.y], []).filter(p => p[1] >= minY)); }
-        seg(A, B, cands); seg(B, C, cands);
-        for (const [x, y] of cands) {
-          const b = [x - w / 2, y - ht / 2, x + w / 2, y + ht / 2], v = score(b, Math.hypot(x - A[0], y - A[1]), ht, s, near, nearP);
-          if (!pick || v < pick.v) pick = { x, y, b, v, s };
-        }
-        if (pick.v < 1) break;
-      }
-      c.x = pick.x; c.y = pick.y; c.sc = pick.s; placed.push(pick.b);
+    const seg = (p, q, out, st = 3) => { const n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / st)); for (let j = 1; j <= n; j++) out.push([p[0] + (q[0] - p[0]) * j / n, p[1] + (q[1] - p[1]) * j / n]); return out; };
+    const fa = faces.map(f => (f[2] - f[0]) * (f[3] - f[1])), placed = [], G = 2;   // 名牌之間至少留 2px
+    const todo = list.filter(c => c.ax != null).sort((p, q) => q.ay - p.ay);
+    for (const c of todo) { c.w0 = c.lw.offsetWidth; c.h0 = c.lw.offsetHeight; c.cap = 1; }
+    // 先看同一高度左右相鄰的名牌：原位放不下就一起縮到剛好放得下（同一排大小一致，不會先放的很大、夾在中間的被擠到沒位子）
+    for (let i = 0; i < todo.length; i++) for (let j = i + 1; j < todo.length; j++) {
+      const p = todo[i], q = todo[j];
+      if (Math.abs(p.ay - q.ay) >= (p.h0 + q.h0) / 2) continue;
+      const k = (Math.abs(p.ax - q.ax) - G) / ((p.w0 + q.w0) / 2);
+      if (k < p.cap) p.cap = k; if (k < q.cap) q.cap = k;
     }
-    for (const c of list) if (c.x != null) Object.assign(c.lw.style, { left: c.x.toFixed(1) + 'px', top: c.y.toFixed(1) + 'px', zIndex: Math.round(c.y), fontSize: (c.fs * (c.sc || 1)).toFixed(1) + 'px' });
+    for (const c of todo) {
+      const W0 = c.w0, H0 = c.h0, A = [c.ax, c.ay], minS = Math.min(1, 6 / c.fs), cap = Math.max(minS, Math.floor(c.cap * 100) / 100);
+      const reach = W0 * .6 + 40, near = faces.map((f, i) => i).filter(i => faces[i][2] > A[0] - reach && faces[i][0] < A[0] + reach);
+      const nearP = placed.filter(p => p[2] > A[0] - reach - W0 && p[0] < A[0] + reach + W0);
+      let best = null, bestHit = null;
+      for (let s = cap; s >= minS - 1e-6; s = Math.round((s - .1) * 100) / 100) {
+        const w = W0 * s, ht = H0 * s, path = [A];
+        if (c.herald) seg(A, [A[0], A[1] - ht * 2.2], path);
+        else if (c.pts) {
+          const [, B, C] = c.pts;
+          if (c.face) { const minY = c.face.y + c.face.r * .62 + ht / 2 + 1; path.push(...seg(A, [c.face.x, c.face.y], []).filter(p => p[1] >= minY)); }
+          seg(A, B, path); seg(B, C, path);
+        } else { seg(A, [A[0], A[1] - ht * 1.8], path); seg(A, [A[0], A[1] + ht * 1.2], path); }
+        let pick = null;
+        for (const dx of [0, -.18, .18, -.34, .34]) {
+          for (const [px, py] of path) {
+            const x = px + dx * w, y = py, b = [x - w / 2, y - ht / 2, x + w / 2, y + ht / 2], bb = [b[0] - G, b[1] - G, b[2] + G, b[3] + G];
+            let ov = 0; for (const p of nearP) ov += area(bb, p);
+            let v = 10 * Math.hypot(x - A[0], y - A[1]) / ht + 25 * (cap - s) / .26;
+            for (const i of near) v += 300 * area(b, faces[i]) / fa[i];
+            if (ov > 0) { if (!bestHit || ov < bestHit.ov || (ov === bestHit.ov && v < bestHit.v)) bestHit = { x, y, b, v, s, ov }; continue; }
+            if (!pick || v < pick.v) pick = { x, y, b, v, s };
+          }
+          if (pick && pick.v < 30) break;   // 不用左右偏就放得好
+        }
+        if (pick && (!best || pick.v < best.v)) best = pick;
+        if (best && best.v < 40) break;   // 這個大小就放得下、不太擋臉
+      }
+      if (!best) {   // 還是放不下：用最小的字、往上下更遠的地方找空位
+        const w = W0 * minS, ht = H0 * minS, path = seg(A, [A[0], A[1] - ht * 5], [], 2);
+        seg(A, [A[0], A[1] + ht * 4], path, 2);
+        for (const dx of [0, -.3, .3, -.6, .6]) for (const [px, py] of path) {
+          const x = px + dx * w, b = [x - w / 2, py - ht / 2, x + w / 2, py + ht / 2], bb = [b[0] - G, b[1] - G, b[2] + G, b[3] + G];
+          if (placed.some(p => area(bb, p) > 0)) continue;
+          const v = Math.hypot(x - A[0], py - A[1]);
+          if (!best || v < best.v) best = { x, y: py, b, v, s: minS };
+        }
+      }
+      const p = best || bestHit;
+      c.x = p.x; c.y = p.y; c.sc = p.s; placed.push(p.b);
+    }
+    for (const c of list) if (c.ax != null) Object.assign(c.lw.style, { left: c.x.toFixed(1) + 'px', top: c.y.toFixed(1) + 'px', zIndex: Math.round(c.ay), fontSize: (c.fs * (c.sc || 1)).toFixed(1) + 'px' });
   },
   clickCell(cell) {
     const s = stu(cell.sid || cell.hsid);

@@ -24,21 +24,22 @@
   background: linear-gradient(to top, var(--wbase) 0 6px, var(--wain) 6px 92px, var(--wline) 92px 98px, var(--wallc) 98px); }
 /* 兩側的大片窗戶：季節風景（橫向重複）＋時段天色＋水藍透明玻璃（2026-11-03 使用者要求，色碼照 ChatGPT）＋米白窗框 */
 .r-wband { position: absolute; top: 34px; height: 160px; border: 8px solid #f5f0e5; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #d8d2c5, 0 3px 8px rgba(90, 130, 145, .12); }
+/* 玻璃要淡到看得清楚窗外風景，清爽明亮（同日第二次，使用者要求；色碼照 ChatGPT），窗外風景也調亮一點 */
 .r-glass { position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(115deg, transparent 0 40px, rgba(255, 255, 255, .55) 40px 43px, transparent 43px 52px, rgba(255, 255, 255, .4) 52px 54px, transparent 54px 150px),
-    linear-gradient(rgba(160, 226, 245, .42), rgba(126, 211, 235, .38) 55%, rgba(104, 192, 224, .46)); }
+  background: repeating-linear-gradient(115deg, transparent 0 46px, rgba(255, 255, 255, .32) 46px 49px, rgba(255, 255, 255, .08) 49px 54px, transparent 54px 150px),
+    linear-gradient(125deg, rgba(205, 239, 248, .2), rgba(148, 215, 232, .12) 45%, rgba(218, 244, 250, .18)); }
 /* 節日掛飾（GARLAND）：一段 200×100 的圖橫向重複 */
 .r-garland { position: absolute; pointer-events: none; background-repeat: repeat-x; background-position: left top; z-index: 1; }
 .r-wdrop { position: absolute; top: 26px; height: 92px; transform: translateX(-50%); pointer-events: none; z-index: 1; }
 .r-wdrop svg { display: block; height: 100%; width: auto; }
 /* 課桌、櫃子在地板上的影子：柔和偏暖（ChatGPT 建議 #534130） */
 .r-bshadow { background: rgba(83, 65, 48, .3); border-radius: 12px; box-shadow: 0 0 12px 8px rgba(83, 65, 48, .22); }
-/* 被點到的同學：桌下地板的圓圈（ChatGPT 建議：薄荷綠填色、綠色外框）；多選、排座位選到的是黃色 */
-.r-ring { border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .2s; background: rgba(126, 220, 155, .38); border: 6px solid rgba(53, 169, 108, .92); box-shadow: 0 0 16px rgba(54, 184, 117, .55); }
+/* 被點到的同學：桌下地板的圓圈，顏色跟著佈景換（room.js 依 THEME_SEL 設 --ringf、--ringc）；多選、排座位選到的是黃色 */
+.r-ring { border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .2s; background: var(--ringf, rgba(88, 155, 117, .32)); border: 6px solid var(--ringc, #4d956d); box-shadow: 0 0 16px var(--ringc, #4d956d); }
 .r-ring.on { opacity: 1; animation: ringPulse 1.4s ease-in-out infinite alternate; }
 .r-ring.picked { opacity: 1; background: rgba(255, 214, 90, .35); border-color: rgba(240, 180, 40, .95); box-shadow: 0 0 14px rgba(246, 185, 59, .5); }
-@keyframes ringPulse { from { box-shadow: 0 0 8px rgba(54, 184, 117, .4); } to { box-shadow: 0 0 22px 4px rgba(54, 184, 117, .7); } }
-.r-wview { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; background-position: left bottom; }
+@keyframes ringPulse { from { box-shadow: 0 0 6px var(--ringc, #4d956d); } to { box-shadow: 0 0 22px 4px var(--ringc, #4d956d); } }
+.r-wview { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; background-position: left bottom; filter: brightness(1.12) saturate(1.08) contrast(.96); }
 .r-wsky, .r-wframe { position: absolute; inset: 0; }
 /* 立體窗台（木板上面和前緣） */
 .r-sill { background: #c79565; box-shadow: inset 0 3px 0 #e7bf8d; }
@@ -69,10 +70,10 @@
 .r-lw .seat { position: relative; }
 .r-lw .seat .badge, .r-lw .seat .badge[class*="hw-"] { position: absolute; left: auto; bottom: auto; right: -.75em; top: -.8em; display: grid; place-items: center; min-width: 1.5em; height: 1.5em; padding: 0 .2em; border-radius: 999px;
   border: .12em solid #fff; box-shadow: 0 1px 4px rgba(40, 30, 10, .3); font-size: 1.1em; line-height: 1; z-index: 1; }
-/* 2026-11-03 名牌明顯一點：純白底、外面一圈深綠細框、影子加深；被點到的同學名牌變綠底白字（使用者要求，綠色照 ChatGPT 建議 #36B875） */
+/* 2026-11-03 名牌明顯一點：純白底、外面一圈深綠細框、影子加深；被點到的同學名牌變彩色底白字，顏色跟著佈景換（--selc、--seld，色碼照 ChatGPT） */
 .r-lw .seat { background: #fff; color: #594c43; box-shadow: 0 0 0 .07em rgba(47, 74, 63, .5), 0 .12em .35em rgba(40, 30, 10, .35); }
-.r-lw .seat.sel { outline: none; background: #36b875; border-color: #fff; color: #fff; box-shadow: 0 0 0 .08em #1f7a4c, 0 0 .7em rgba(54, 184, 117, .85); }
-.r-lw .seat.sel .no { background: #fff; color: #1f7a4c; }
+.r-lw .seat.sel { outline: none; background: var(--selc, #589b75); border-color: #fff; color: #fff; box-shadow: 0 0 0 .08em var(--seld, #326c50), 0 0 .7em var(--selc, #589b75); }
+.r-lw .seat.sel .no { background: #fff; color: var(--seld, #326c50); }
 .seat.hwm-miss { border-color: var(--minus); background: #ffe6e2; }
 .seat.hwm-fix { border-color: #e69b2e; background: #fff0d6; }
 .seat.hwm-done { border-color: var(--plus); background: #e3f6e8; }
@@ -90,7 +91,10 @@
 .owep .owe-grid.sm .owe b { font-size: 50px; }
 .owep .owe-grid.sm .owe span { font-size: 20px; }
 .owep .owe-grid.sm .owe small { font-size: 17px; }
-.owep .owe-sec h3 { font-size: 24px; margin: 16px 0 8px; }
+.owep .owe-sec h3 { font-size: clamp(28px, 3vw, 46px); font-weight: 800; color: #8a2f2f; margin: 18px 0 10px; }
+/* 2026-11-03 使用者要求：作業投影的標題（還沒交齊：作業名稱）放大，學生才看得清楚是哪一項 */
+.ov.proj.owep .lhead { padding: 14px 24px; }
+.ov.proj.owep .lhead h2 { font-size: clamp(36px, 4.6vw, 72px); font-weight: 800; line-height: 1.2; color: #8a2f2f; margin-right: auto; }
 .owe.done { border-color: var(--plus); color: var(--plus); background: var(--plus-tint); }
 .owe.none { border-color: #c9bfae; border-style: dashed; color: #9a8f7e; }
 .owe-tip { color: var(--muted); font-size: 15px; }
