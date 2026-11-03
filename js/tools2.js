@@ -148,7 +148,7 @@ const Homework = {
       if (!W.length) { c.body.append(h('div', { class: 'bigmsg' }, '🎉 作業都交齊了！')); return; }
       c.body.append(h('div', { class: 'owe-all' }, W.filter(w => D.hw.includes(w)).map(w => {
         const k = keep.get(w.id), L = roster().filter(s => k.has(s.id) || w.marks[s.id] === 'miss' || w.marks[s.id] === 'fix');
-        return h('div', { class: 'owe-sec' }, h('h3', null, w.name, this.owing(w).length ? null : h('span', { class: 'owe-ok sm' }, '　🎉 交齊了')),
+        return h('div', { class: 'owe-sec' }, h('h3', null, h('span', { class: 'owe-title' }, w.name), this.owing(w).length ? null : h('span', { class: 'owe-ok sm' }, '　🎉 交齊了')),
           h('div', { class: 'owe-grid sm' }, L.map(s => this.oweCard(w, s, k, c))));
       })));
     }, { cls: 'owep' });

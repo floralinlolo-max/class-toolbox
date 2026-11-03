@@ -3,8 +3,9 @@
    座標都用「地板座標」：x 向右、y 往前（靠近鏡頭＝講桌那邊）、z 往上；鏡頭站在講台看教室，所以第 1 排在最前面、左右和老師看到的一樣。
    人物圖案在 art.js。 */
 
-// 2026-11-03：課桌加大（DW、DD）、同學頭縮小；講桌縮小（TDW、TDD、TDH）。同日第二次：座位往中間聚攏（CW、CD 縮小，牆邊走道 SIDE、BACK 加寬），名牌靠 placeLabels 避開不重疊
-const RM = { CW: 170, CD: 172, SIDE: 124, BACK: 150, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
+// 2026-11-03：課桌加大（DW、DD）、同學頭縮小；講桌縮小（TDW、TDD、TDH）。同日第二次：座位往中間聚攏（CW、CD 縮小，牆邊走道 SIDE、BACK 加寬），名牌靠 placeLabels 避開不重疊。
+// 同日第三次（使用者要名牌再大、從教室後面看得清楚）：畫面通常是高度不夠（教室被上下塞滿、左右有空），所以把左右行距 CW 拉大給名牌位子，教室在畫面上不會變小
+const RM = { CW: 250, CD: 176, SIDE: 80, BACK: 150, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
 const svgURL = s => 'url("data:image/svg+xml,' + encodeURIComponent(s) + '")';
 const THEMES = {
   auto: { name: '自動', desc: '依日期換節日佈景', sw: ['#e8e1d3', '#9fd3c1', '#f6b93b'] },
@@ -498,7 +499,8 @@ const Room = {
   wband(x, w) {
     const pane = Math.max(1, Math.round(w / 110));
     const fr = h('div', { class: 'r-wframe' });
-    fr.style.backgroundImage = `repeating-linear-gradient(90deg, #f5f0e5 0 7px, transparent 7px ${(w / pane).toFixed(1)}px), linear-gradient(transparent 36%, #f5f0e5 36%, #f5f0e5 calc(36% + 6px), transparent calc(36% + 6px))`;
+    // 窗框細一點（斜斜看過去時窗框太密會蓋掉風景）
+    fr.style.backgroundImage = `repeating-linear-gradient(90deg, #f5f0e5 0 4px, transparent 4px ${(w / pane).toFixed(1)}px), linear-gradient(transparent 36%, #f5f0e5 36%, #f5f0e5 calc(36% + 4px), transparent calc(36% + 4px))`;
     return h('div', { class: 'r-wband', style: { left: Math.round(x) + 'px', width: Math.round(w) + 'px' } },
       h('div', { class: 'r-wview', style: { backgroundImage: svgURL(SCENE[this.season] || SCENE.summer) } }),
       h('div', { class: 'r-wsky', style: { background: (LIGHTS[this.time] || {}).sky || 'transparent' } }), h('div', { class: 'r-glass' }), fr);
@@ -566,13 +568,13 @@ const Room = {
     const P = (...a) => this.prop(...a);
     switch (th) {
       case 'halloween':
-        P(ART.pumpkin, W - 58, 74, 72, 62); P(ART.pumpkin, 56, L - 200, 62, 54); P(ART.pumpkin, dx, dy, 44, 38, dz);
+        P(ART.pumpkin, W - 58, 74, 72, 62); P(ART.pumpkin, W - 56, L - 200, 62, 54); P(ART.pumpkin, dx, dy, 44, 38, dz);
         P(ART.pumpkin, cub.x + 26, 22, 40, 35, RM.TD); P(ART.pumpkin, cub.x + cub.w - 26, 22, 40, 35, RM.TD); break;
       case 'xmas':
         P(ART.tree, W - 72, 82, 128, 220); P(ART.gift('#e63946'), W - 150, 112, 46, 42); P(ART.gift('#4ea8de'), W - 34, 128, 40, 37); P(ART.gift('#43a865'), dx, dy, 40, 37, dz); break;
-      case 'cny': P(ART.oranges, dx - 6, dy, 62, 44, dz); P(ART.oranges, 56, L - 200, 66, 47); break;
+      case 'cny': P(ART.oranges, dx - 6, dy, 62, 44, dz); P(ART.oranges, W - 56, L - 200, 66, 47); break;
       case 'moon': P(ART.pomelos, dx - 6, dy, 58, 44, dz); P(ART.pomelos, W - 58, 80, 76, 57); break;
-      case 'kids': P(ART.balloons, W - 58, 80, 80, 196); P(ART.balloons, 58, L - 190, 80, 196); P(ART.gift('#ef476f'), dx, dy, 40, 37, dz); break;
+      case 'kids': P(ART.balloons, W - 58, 80, 80, 196); P(ART.balloons, W - 58, L - 190, 80, 196); P(ART.gift('#ef476f'), dx, dy, 40, 37, dz); break;
       case 'sports': P(ART.trophy, dx, dy, 44, 52, dz); P(ART.trophy, cub.x + cub.w - 30, 22, 40, 48, RM.TD); break;
       case 'lantern': P(ART.tangyuan, dx - 4, dy, 50, 34, dz); P(ART.flantern('#d62828'), cub.x + 28, 22, 40, 64, RM.TD); P(ART.flantern('#f28c38'), cub.x + cub.w - 28, 22, 40, 64, RM.TD); break;
       case 'mom': P(ART.vase, dx, dy, 36, 63, dz); P(ART.carnations, cub.x + cub.w - 30, 22, 46, 69, RM.TD); break;
@@ -582,9 +584,8 @@ const Room = {
         this.add('r-rug', flatAt(14, 40, 0.6), 200, 130);
         P(ART.shelf, 70, 60, 100, 130); P(ART.beanbag, 160, 140, 70, 50); break;
     }
-    // 教室右前方（老師視角畫面的右下角、門的前面）的地板上放一個大擺飾（2026-11-03 使用者要求，例如端午節的龍舟；圖是 ChatGPT 設計的 FLOOR_ART）
-    const big = FLOOR_ART[th] ? [FLOOR_ART[th], 228, 133] : { halloween: [ART.pumpkin, 104, 91], sports: [ART.trophy, 76, 91], mom: [ART.carnations, 66, 99] }[th];
-    if (big) P(big[0], W - 40 - big[1] / 2, L - 56, big[1], big[2]);
+    // 教室左前方（老師視角畫面的左下角）的地板上放一個立體可愛的大擺飾（2026-11-03 使用者要求，例如端午節的龍舟；圖是 ChatGPT 設計的 FLOOR_ART，240×160）
+    if (FLOOR_ART[th]) P(FLOOR_ART[th], 40 + 114, L - 60, 228, 152);
   },
   heralds(th, fine) {
     const L = UI.heralds.filter(x => stu(x.sid)), n = L.length;
@@ -624,7 +625,7 @@ const Room = {
     for (const c of this.cells) {
       const r = c.anchor.getBoundingClientRect();
       // 名牌大小可在設定「外觀」選；舉牌同學的名牌本來就比較大，放大會蓋到牌子上的字，所以不跟著放大
-      c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * (c.herald ? 17 : 12), 9, 20) * (c.herald ? 1 : Look.tagK);
+      c.fs = c.herald ? clamp(Math.max(r.width, r.height * 1.6) / c.aw * 17, 9, 20) : clamp(Math.max(r.width, r.height * 1.6) / c.aw * 20, 13, 26) * Look.tagK;   // 名牌照桌子在畫面上的大小，最小 13px×大小設定（大＝19.5px）
       c.face = null; c.pts = null;
       if (c.herald) { c.ax = c.x = r.left + r.width / 2 - V.left; c.ay = c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
       if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 Toon.KID.R）

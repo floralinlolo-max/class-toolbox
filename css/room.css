@@ -72,6 +72,11 @@
   border: .12em solid #fff; box-shadow: 0 1px 4px rgba(40, 30, 10, .3); font-size: 1.1em; line-height: 1; z-index: 1; }
 /* 2026-11-03 名牌明顯一點：純白底、外面一圈深綠細框、影子加深；被點到的同學名牌變彩色底白字，顏色跟著佈景換（--selc、--seld，色碼照 ChatGPT） */
 .r-lw .seat { background: #fff; color: #594c43; box-shadow: 0 0 0 .07em rgba(47, 74, 63, .5), 0 .12em .35em rgba(40, 30, 10, .35); }
+/* 同日第三次：投影時從教室最後面也看得清楚（配色照 ChatGPT：白底、深綠黑字、灰綠外框、座號深綠圓圈白色粗字）；左右留白縮一點，名牌不會太寬 */
+.r-lw .seat { color: #263b32; border-color: #a9bdaf; border-width: .1em; font-weight: 800; padding: .1em .42em .1em .1em; gap: .22em;
+  box-shadow: 0 .12em .35em rgba(38, 65, 49, .28); }
+.r-lw .seat .no { background: #285e43; color: #fff; font-weight: 900; }
+.r-lw .seat .nm { letter-spacing: .02em; }
 .r-lw .seat.sel { outline: none; background: var(--selc, #589b75); border-color: #fff; color: #fff; box-shadow: 0 0 0 .08em var(--seld, #326c50), 0 0 .7em var(--selc, #589b75); }
 .r-lw .seat.sel .no { background: #fff; color: var(--seld, #326c50); }
 .seat.hwm-miss { border-color: var(--minus); background: #ffe6e2; }
@@ -91,13 +96,25 @@
 .owep .owe-grid.sm .owe b { font-size: 50px; }
 .owep .owe-grid.sm .owe span { font-size: 20px; }
 .owep .owe-grid.sm .owe small { font-size: 17px; }
-.owep .owe-sec h3 { font-size: clamp(28px, 3vw, 46px); font-weight: 800; color: #8a2f2f; margin: 18px 0 10px; }
+/* 每項作業的名稱：蜂蜜色標籤（ChatGPT 設計），和狀態顏色分得開 */
+.owep .owe-sec h3 { display: flex; align-items: center; gap: 12px; margin: 18px 0 10px; }
+.owep .owe-sec h3 { font-size: clamp(28px, 3vw, 46px); font-weight: 900; }
+.owep .owe-title { display: inline-block; background: #f4e5c6; color: #765126; padding: .12em .6em; border-radius: 12px; border: 2px solid #d7b77d; letter-spacing: .04em; box-shadow: 0 2px 4px rgba(120, 85, 40, .12); }
 /* 2026-11-03 使用者要求：作業投影的標題（還沒交齊：作業名稱）放大，學生才看得清楚是哪一項 */
 .ov.proj.owep .lhead { padding: 14px 24px; }
-.ov.proj.owep .lhead h2 { font-size: clamp(36px, 4.6vw, 72px); font-weight: 800; line-height: 1.2; color: #8a2f2f; margin-right: auto; }
+/* 大標題：深海軍藍色塊白字、左邊金色條（ChatGPT 設計），一眼看出是標題 */
+.ov.proj.owep .lhead h2 { font-size: clamp(34px, 4.2vw, 66px); font-weight: 900; line-height: 1.2; margin-right: auto; background: #304f62; color: #fff; padding: .12em .55em; border-radius: 14px;
+  border-left: .18em solid #e5bc72; letter-spacing: .05em; box-shadow: 0 4px 10px rgba(38, 62, 76, .16); }
 .owe.done { border-color: var(--plus); color: var(--plus); background: var(--plus-tint); }
 .owe.none { border-color: #c9bfae; border-style: dashed; color: #9a8f7e; }
 .owe-tip { color: var(--muted); font-size: 15px; }
+/* 同日第三次：四種狀態一眼分得出來（ChatGPT 配色：缺交橘紅、要訂正紫、完成綠、已清除灰；淺底＋深字＋外框，色弱也分得出） */
+.owep .owe { border-width: 4px; }
+.owep .owe.miss { background: #fff0e8; border-color: #c45b32; color: #963d20; }
+.owep .owe.fix { background: #f0edff; border-color: #7560b5; color: #51408c; }
+.owep .owe.done { background: #e5f3e9; border-color: #47845b; color: #28643d; }
+.owep .owe.none { background: #edf0f2; border-color: #84919a; border-style: dashed; color: #53616a; }
+.owep .owe span { color: inherit; }
 .owe-ok { text-align: center; font-size: 40px; font-weight: 800; color: var(--plus); margin-bottom: 14px; }
 .owe-ok.sm { font-size: .75em; margin: 0; }
 
