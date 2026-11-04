@@ -384,6 +384,12 @@ select.c-hw, select.c-bring, select.c-test, select.c-note { color: var(--ink); }
 .dbtn.on { background: #e0f2ec; border-color: var(--pri); }
 .dbtn.main { background: var(--yellow); color: var(--yellow-ink); min-width: 86px; font-weight: 800; }
 .dbtn.hid { opacity: .5; border: 2px dashed var(--line); }
+/* 收起鈕固定在工具列最右邊；收起後畫面下方中間留一個小按鈕 */
+#dock { justify-content: safe center; }
+.dbtn.fold { position: sticky; right: -10px; flex: none; min-width: 56px; margin-left: 6px; background: var(--panel); border-left: 2px solid var(--line); border-radius: 0 12px 12px 0; color: var(--muted, #6c7680); }
+.dbtn.fold .di { font-size: 22px; }
+.dock-show { position: fixed; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; border: 1px solid var(--line); border-radius: 999px; padding: 5px 18px; background: var(--panel); box-shadow: var(--shadow); font-size: 15px; font-weight: 700; cursor: pointer; opacity: .7; transition: opacity .2s; }
+.dock-show:hover, .dock-show:focus-visible { opacity: 1; }
 .dockedit { display: flex; flex-wrap: wrap; gap: 8px; }
 .dockedit .dbtn { border-color: var(--line); }
 
@@ -679,6 +685,11 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .wd-add span { font-size: 23px; line-height: 1.2; }
 .wd-add small { font-size: 12px; white-space: nowrap; }
 .wd-add:hover { background: #f1ece2; }
+/* 收起鈕固定在小工具列最右邊（小工具列太長要左右捲動時也看得到） */
+.wd-fold { position: sticky; right: -8px; margin-left: 4px; background: rgba(255, 255, 255, .97); border-left: 2px solid #e8e3d8; border-radius: 0 12px 12px 0; }
+.wd-fold span { color: #6c7680; }
+.w-dockshow { position: absolute; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20000; border: 0; border-radius: 999px; padding: 6px 18px; background: rgba(255, 255, 255, .9); box-shadow: 0 4px 14px rgba(0, 0, 0, .2); color: #25313b; font-size: 15px; font-weight: 700; cursor: pointer; opacity: .6; transition: opacity .2s; }
+.w-dockshow:hover, .w-dockshow:focus-visible { opacity: 1; }
 .w-nav { position: absolute; right: 12px; bottom: 14px; display: flex; gap: 4px; align-items: center; z-index: 20000; }
 .w-pname { background: rgba(255, 255, 255, .94); border: 1px solid rgba(0, 0, 0, .12); border-radius: 12px; padding: 6px 12px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .wall.locked .w-top, .wall.locked .w-nav { opacity: .3; transition: opacity .3s; }
@@ -911,6 +922,7 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
   #side { position: fixed; right: 0; top: 50px; bottom: 70px; z-index: 40; box-shadow: var(--shadow); }
   .g-grid, .bed { grid-template-columns: 1fr; }
   .w-dock { max-width: calc(100% - 20px); bottom: 64px; }
+  .w-dockshow { bottom: 64px; }
 }
 
 /* 雲端動態牆：接在班級百寶箱 app.css 後面。整面牆固定用亮色（投影用），不跟著深色模式變 */
@@ -2619,8 +2631,18 @@ const WALL_TPL = {
 
 /* ---------- 動態牆本體 ---------- */
 const Wall = {
-  root: null, canvas: null, panel: null, sel: null, live: new Map(), mics: new Map(), tk: null,
+  root: null, canvas: null, panel: null, sel: null, live: new Map(), mics: new Map(), tk: null, fold: null,
   isOpen() { return !!this.root; },
+  // 小工具列收起來了沒（localStorage 'bxbox-wdock'；瀏覽器不讓存時只記在這次打開）
+  dockFold() {
+    if (this.fold == null) { try { this.fold = localStorage.getItem('bxbox-wdock') === 'fold'; } catch (e) { this.fold = false; } }
+    return this.fold;
+  },
+  setFold(v) {
+    this.fold = !!v;
+    try { if (v) localStorage.setItem('bxbox-wdock', 'fold'); else localStorage.removeItem('bxbox-wdock'); } catch (e) { }
+    if (this.root) this.draw();
+  },
   page() {
     let p = D.wall.pages.find(x => x.id === D.wall.cur);
     if (!p && D.wall.pages.length) { p = D.wall.pages[0]; D.wall.cur = p.id; }
@@ -2684,9 +2706,13 @@ const Wall = {
       h('span', { class: 'grow' }),
       h('button', { class: 'wbtn', title: locked ? '解除鎖定才能移動小工具' : '鎖住後，小工具不會被拖動', onclick: () => { D.wall.locked = !locked; save(); this.sel = null; this.draw(); } }, locked ? '🔓 編輯版面' : '🔒 鎖定版面'),
       h('button', { class: 'wbtn', onclick: () => toggleFull() }, '⛶ 全螢幕'));
-    const dock = h('div', { class: 'w-dock' },
-      h('button', { class: 'wd-add', onclick: () => this.bgPicker() }, h('span', null, '🎨'), h('small', null, '背景')),
-      WT_ORDER.map(k => h('button', { class: 'wd-add', title: '加入' + WT[k].name, onclick: () => this.add(k) }, h('span', null, WT[k].icon), h('small', null, WT[k].name))));
+    // 小工具列可以收起來（記在這台電腦），收起時下面只留一個小按鈕
+    const dock = this.dockFold()
+      ? h('button', { class: 'w-dockshow', title: '打開小工具列', onclick: () => this.setFold(false) }, '︿ 小工具列')
+      : h('div', { class: 'w-dock' },
+        h('button', { class: 'wd-add', onclick: () => this.bgPicker() }, h('span', null, '🎨'), h('small', null, '背景')),
+        WT_ORDER.map(k => h('button', { class: 'wd-add', title: '加入' + WT[k].name, onclick: () => this.add(k) }, h('span', null, WT[k].icon), h('small', null, WT[k].name))),
+        h('button', { class: 'wd-add wd-fold', title: '收起小工具列（下面會留一個小按鈕，可以再打開）', onclick: () => this.setFold(true) }, h('span', null, '﹀'), h('small', null, '收起')));
     this.panel = h('div', { class: 'w-panel', hidden: true });
     this.root.append(...[cv, top, locked ? null : dock, nav, this.panel].filter(Boolean));
     if (this.sel && this.cur()) this.select(this.sel, !this.panelWasOpen ? false : true); else this.sel = null;

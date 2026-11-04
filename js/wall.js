@@ -858,8 +858,18 @@ const WALL_TPL = {
 
 /* ---------- 動態牆本體 ---------- */
 const Wall = {
-  root: null, canvas: null, panel: null, sel: null, live: new Map(), mics: new Map(), tk: null,
+  root: null, canvas: null, panel: null, sel: null, live: new Map(), mics: new Map(), tk: null, fold: null,
   isOpen() { return !!this.root; },
+  // 小工具列收起來了沒（localStorage 'bxbox-wdock'；瀏覽器不讓存時只記在這次打開）
+  dockFold() {
+    if (this.fold == null) { try { this.fold = localStorage.getItem('bxbox-wdock') === 'fold'; } catch (e) { this.fold = false; } }
+    return this.fold;
+  },
+  setFold(v) {
+    this.fold = !!v;
+    try { if (v) localStorage.setItem('bxbox-wdock', 'fold'); else localStorage.removeItem('bxbox-wdock'); } catch (e) { }
+    if (this.root) this.draw();
+  },
   page() {
     let p = D.wall.pages.find(x => x.id === D.wall.cur);
     if (!p && D.wall.pages.length) { p = D.wall.pages[0]; D.wall.cur = p.id; }
@@ -923,9 +933,13 @@ const Wall = {
       h('span', { class: 'grow' }),
       h('button', { class: 'wbtn', title: locked ? '解除鎖定才能移動小工具' : '鎖住後，小工具不會被拖動', onclick: () => { D.wall.locked = !locked; save(); this.sel = null; this.draw(); } }, locked ? '🔓 編輯版面' : '🔒 鎖定版面'),
       h('button', { class: 'wbtn', onclick: () => toggleFull() }, '⛶ 全螢幕'));
-    const dock = h('div', { class: 'w-dock' },
-      h('button', { class: 'wd-add', onclick: () => this.bgPicker() }, h('span', null, '🎨'), h('small', null, '背景')),
-      WT_ORDER.map(k => h('button', { class: 'wd-add', title: '加入' + WT[k].name, onclick: () => this.add(k) }, h('span', null, WT[k].icon), h('small', null, WT[k].name))));
+    // 小工具列可以收起來（記在這台電腦），收起時下面只留一個小按鈕
+    const dock = this.dockFold()
+      ? h('button', { class: 'w-dockshow', title: '打開小工具列', onclick: () => this.setFold(false) }, '︿ 小工具列')
+      : h('div', { class: 'w-dock' },
+        h('button', { class: 'wd-add', onclick: () => this.bgPicker() }, h('span', null, '🎨'), h('small', null, '背景')),
+        WT_ORDER.map(k => h('button', { class: 'wd-add', title: '加入' + WT[k].name, onclick: () => this.add(k) }, h('span', null, WT[k].icon), h('small', null, WT[k].name))),
+        h('button', { class: 'wd-add wd-fold', title: '收起小工具列（下面會留一個小按鈕，可以再打開）', onclick: () => this.setFold(true) }, h('span', null, '﹀'), h('small', null, '收起')));
     this.panel = h('div', { class: 'w-panel', hidden: true });
     this.root.append(...[cv, top, locked ? null : dock, nav, this.panel].filter(Boolean));
     if (this.sel && this.cur()) this.select(this.sel, !this.panelWasOpen ? false : true); else this.sel = null;

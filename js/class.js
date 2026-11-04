@@ -295,6 +295,13 @@ function multiCard() {
 /* ---------- 工具列 ---------- */
 function renderDock() {
   const d = $('#dock'); d.replaceChildren();
+  // 工具列可以收起來（記在這台電腦 localStorage 'bxbox-dock'），收起時下面只留一個小按鈕
+  if (UI.dockFold == null) { try { UI.dockFold = localStorage.getItem('bxbox-dock') === 'fold'; } catch (e) { UI.dockFold = false; } }
+  d.hidden = UI.dockFold;
+  let show = $('#dockShow');
+  if (UI.dockFold && !show) document.body.append(show = h('button', { id: 'dockShow', class: 'dock-show', title: '打開工具列', onclick: () => foldDock(false) }, '︿ 工具列'));
+  if (!UI.dockFold && show) show.remove();
+  if (UI.dockFold) return;
   let g = 0;
   for (const t of TOOLS) {
     if (D.info.dockHidden.includes(t.id)) continue;
@@ -303,6 +310,12 @@ function renderDock() {
     d.append(h('button', { class: 'dbtn' + (t.id === 'draw' ? ' main' : '') + (t.mode && UI.mode === t.mode ? ' on' : ''), title: t.label, onclick: () => t.run() },
       h('span', { class: 'di' }, t.icon), h('span', { class: 'dl' }, t.id === 'draw' && D.lot.range ? '抽 ' + Lottery.pool(true).length + ' 人' : t.label)));
   }
+  d.append(h('button', { class: 'dbtn fold', title: '收起工具列（下面會留一個小按鈕，可以再打開）', onclick: () => foldDock(true) }, h('span', { class: 'di' }, '﹀'), h('span', { class: 'dl' }, '收起')));
+}
+function foldDock(v) {
+  UI.dockFold = !!v;
+  try { if (v) localStorage.setItem('bxbox-dock', 'fold'); else localStorage.removeItem('bxbox-dock'); } catch (e) { }
+  renderDock(); renderBoard();
 }
 function classPlus() {
   const ids = presentList().map(s => s.id);

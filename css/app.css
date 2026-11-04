@@ -372,6 +372,12 @@ select.c-hw, select.c-bring, select.c-test, select.c-note { color: var(--ink); }
 .dbtn.on { background: #e0f2ec; border-color: var(--pri); }
 .dbtn.main { background: var(--yellow); color: var(--yellow-ink); min-width: 86px; font-weight: 800; }
 .dbtn.hid { opacity: .5; border: 2px dashed var(--line); }
+/* 收起鈕固定在工具列最右邊；收起後畫面下方中間留一個小按鈕 */
+#dock { justify-content: safe center; }
+.dbtn.fold { position: sticky; right: -10px; flex: none; min-width: 56px; margin-left: 6px; background: var(--panel); border-left: 2px solid var(--line); border-radius: 0 12px 12px 0; color: var(--muted, #6c7680); }
+.dbtn.fold .di { font-size: 22px; }
+.dock-show { position: fixed; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; border: 1px solid var(--line); border-radius: 999px; padding: 5px 18px; background: var(--panel); box-shadow: var(--shadow); font-size: 15px; font-weight: 700; cursor: pointer; opacity: .7; transition: opacity .2s; }
+.dock-show:hover, .dock-show:focus-visible { opacity: 1; }
 .dockedit { display: flex; flex-wrap: wrap; gap: 8px; }
 .dockedit .dbtn { border-color: var(--line); }
 
@@ -667,6 +673,11 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
 .wd-add span { font-size: 23px; line-height: 1.2; }
 .wd-add small { font-size: 12px; white-space: nowrap; }
 .wd-add:hover { background: #f1ece2; }
+/* 收起鈕固定在小工具列最右邊（小工具列太長要左右捲動時也看得到） */
+.wd-fold { position: sticky; right: -8px; margin-left: 4px; background: rgba(255, 255, 255, .97); border-left: 2px solid #e8e3d8; border-radius: 0 12px 12px 0; }
+.wd-fold span { color: #6c7680; }
+.w-dockshow { position: absolute; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20000; border: 0; border-radius: 999px; padding: 6px 18px; background: rgba(255, 255, 255, .9); box-shadow: 0 4px 14px rgba(0, 0, 0, .2); color: #25313b; font-size: 15px; font-weight: 700; cursor: pointer; opacity: .6; transition: opacity .2s; }
+.w-dockshow:hover, .w-dockshow:focus-visible { opacity: 1; }
 .w-nav { position: absolute; right: 12px; bottom: 14px; display: flex; gap: 4px; align-items: center; z-index: 20000; }
 .w-pname { background: rgba(255, 255, 255, .94); border: 1px solid rgba(0, 0, 0, .12); border-radius: 12px; padding: 6px 12px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .wall.locked .w-top, .wall.locked .w-nav { opacity: .3; transition: opacity .3s; }
@@ -899,4 +910,5 @@ textarea.free { min-height: 200px; font-size: 17px; margin-top: 6px; }
   #side { position: fixed; right: 0; top: 50px; bottom: 70px; z-index: 40; box-shadow: var(--shadow); }
   .g-grid, .bed { grid-template-columns: 1fr; }
   .w-dock { max-width: calc(100% - 20px); bottom: 64px; }
+  .w-dockshow { bottom: 64px; }
 }
