@@ -262,10 +262,10 @@ const Groups = {
     UI.temp = Array.from({ length: n }, (_, i) => ({ name: '第 ' + (i + 1) + ' 組', color: GROUP_COLORS[i % GROUP_COLORS.length], ids: [] }));
     L.forEach((s, i) => UI.temp[i % n].ids.push(s.id));
     refresh();
-    // 3D 教室裡同一組會坐在一起（上方有小組討論的提示列），平面座位才直接打開組員名單
+    // 3D 教室裡同一組會坐在一起（教室下方有小組討論的提示列，不另外跳通知，免得蓋住提示列），平面座位才直接打開組員名單
     if (this.p && !this.p.closed) this.p.rebuild();
     else if (D.info.view === 'flat') this.board();
-    else toast('分成 ' + n + ' 組了，同一組坐在一起');
+    else Snd.pop();
   },
   endTemp() {
     UI.temp = null; refresh();

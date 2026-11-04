@@ -60,7 +60,7 @@ function renderBoard() {
 
 /* ---------- 模式提示列 ---------- */
 function renderBanner() {
-  const b = $('#banner'); b.replaceChildren(); b.hidden = UI.mode === 'normal' && !UI.temp;
+  const b = $('#banner'); b.replaceChildren(); b.hidden = UI.mode === 'normal' && (!UI.temp || D.info.view !== 'flat');   // 3D 教室的小組討論提示列在教室下方（room.js drawCtl）
   const done = h('button', { class: 'btn pri', onclick: () => setMode('normal') }, '完成');
   if (UI.mode === 'multi') {
     b.append(h('span', { class: 'bn-t' }, '☑️ 多選：點同學選取，已選 ' + UI.multi.size + ' 位'),
@@ -89,7 +89,7 @@ function renderBanner() {
       h('button', { class: 'btn', onclick: () => autoSeat('no') }, '依座號排'),
       h('button', { class: 'btn', onclick: () => autoSeat('clear') }, '全部離開座位'),
       h('button', { class: 'btn', onclick: () => printSeats() }, '🖨 列印座位表'), done);
-  } else if (UI.temp) {
+  } else if (UI.temp && D.info.view === 'flat') {
     // 臨時小組討論：3D 教室裡同一組坐在一起（Room.layoutSlots），結束或重新整理就回到原本的座位
     b.append(h('span', { class: 'bn-t' }, '🗣 小組討論：全班隨機分成 ' + UI.temp.length + ' 組，按「結束討論」或重新整理網頁，就回到原本的座位'),
       h('button', { class: 'btn', onclick: () => Groups.startTemp(UI.temp.length) }, '🔀 重新分組'),
@@ -489,7 +489,7 @@ const Settings = {
       row('同學桌上', seg(I.deskItem, [['none', '空桌子'], ['book', '課本和筆'], ['milk', '牛奶']], v => { I.deskItem = v; }), '佈景是考試、閱讀時光、午餐時間時，桌上改放佈景的東西。'),
       row('教室冷氣', seg(I.ac === false ? 'off' : 'on', [['off', '沒有冷氣'], ['on', '有冷氣']], v => { I.ac = v === 'on'; }), '掛在後牆公佈欄的兩邊；點一下開，再點一下關。講桌上的遙控器可以調溫度和風速。'),
       row('教室時鐘', seg(D.clockStyle, [['analog', '指針式'], ['digital', '電子式']], v => { D.clockStyle = v; }), '牆上的時鐘和大時鐘一起換；點牆上的時鐘會打開大時鐘。'),
-      row('公佈欄', h('button', { class: 'btn', onclick: () => Room.editBoard() }, '編輯班級公約、榮譽榜、小叮嚀')),
+      row('公佈欄', h('button', { class: 'btn', onclick: () => BBoard.open() }, '編輯公佈欄（公約、榮譽榜、小叮嚀、優良作品）')),
       h('h3', { class: 'set-h' }, '黑板'),
       row('黑板字體', seg(I.boardFont, [['kai', '楷書'], ['wenkai', '霞鶩文楷']], v => { I.boardFont = v; }),
         '黑板、公佈欄和投影的字。', '楷書用電腦內建的標楷體；霞鶩文楷比較活潑，要連上網路才下載得到（沒網路時先用楷書）。'),
@@ -506,7 +506,7 @@ const Settings = {
       h('h3', { class: 'set-h' }, '只影響這台電腦'),
       row('老師和同學的樣子', seg(Look.fine ? 'fine' : 'simple', [['fine', '精緻'], ['simple', '簡單']], v => Look.set(v)),
         '精緻：大眼睛、有表情（加分會笑、抽中會驚訝）和小動作，需要比較好的電腦。', '畫面卡卡的時候，改成簡單。'),
-      row('教室名牌大小', seg(Look.tag, [['m', '標準'], ['l', '大'], ['xl', '特大']], v => Look.setTag(v)),
+      row('教室名牌大小', seg(Look.tag, [['s', '小'], ['m', '標準'], ['l', '大'], ['xl', '特大']], v => Look.setTag(v)),
         '3D 教室裡同學的名牌（座號、名字、分數、缺／訂／✓）。投影時後面的同學看不清楚就選大一點。', '名牌會自動避開同學的臉，太擠的地方會稍微縮小。'));
   },
   tab_lock(p, c) { Lock.settings(p, c); },

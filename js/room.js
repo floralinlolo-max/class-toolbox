@@ -8,6 +8,10 @@
 // 同日第四次（使用者說整班太寬）：學生往中間集中（CW 180），兩邊走道 SIDE 加寬；名牌改靠多往上下找空位、名牌變窄來放大
 const RM = { CW: 180, CD: 176, SIDE: 110, BACK: 150, FRONT: 200, WH: 300, DW: 112, DD: 58, DH: 56, TD: 84, TDW: 160, TDD: 58, TDH: 74, TILT: 52, KW: 102, KH: 186, SILL: 106 };
 const svgURL = s => 'url("data:image/svg+xml,' + encodeURIComponent(s) + '")';
+// 一段（或幾段並排的）SVG 圖在高度 ht 時有多寬（照 viewBox 比例，並排的中間留 6）
+const artW = (art, ht) => { const m = [...art.matchAll(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/g)]; return m.length ? Math.round(m.reduce((a, x) => a + ht * x[1] / x[2], 0) + (m.length - 1) * 6) : ht; };
+// 點教室裡的吊飾、盆栽、擺飾：搖一搖
+function wiggle(el) { el.classList.remove('swing'); void el.offsetWidth; el.classList.add('swing'); try { Snd.tick(); } catch (e) { } clearTimeout(el._sw); el._sw = setTimeout(() => el.classList.remove('swing'), 1300); }
 const THEMES = {
   auto: { name: '自動', desc: '依日期換節日佈景', sw: ['#e8e1d3', '#9fd3c1', '#f6b93b'] },
   none: { name: '一般教室', desc: '平常的教室', sw: ['#9fd3c1', '#f7efdf', '#f6b93b'] },
@@ -105,6 +109,16 @@ const ART = {
   cart: '<svg viewBox="0 0 120 100"><rect x="8" y="36" width="104" height="44" rx="5" fill="#c8d0d8" stroke="#9aa4ae" stroke-width="2"/><path d="M8 58H112" stroke="#9aa4ae" stroke-width="2"/><circle cx="22" cy="90" r="8" fill="#555"/><circle cx="98" cy="90" r="8" fill="#555"/>' + [[16, '#e8574a'], [46, '#f6c445'], [76, '#4fb58b']].map(([x, c]) => '<rect x="' + x + '" y="12" width="26" height="24" rx="3" fill="#dfe5ea" stroke="#9aa4ae"/><rect x="' + (x - 2) + '" y="8" width="30" height="6" rx="3" fill="' + c + '"/>').join('') + '</svg>',
   bins: '<svg viewBox="0 0 130 80">' + [[4, '#4f9d5d', '廚餘'], [46, '#3c7be0', '回收'], [88, '#8a939c', '一般']].map(([x, c, t]) => '<rect x="' + x + '" y="10" width="38" height="66" rx="4" fill="' + c + '"/><rect x="' + (x - 2) + '" y="4" width="42" height="9" rx="3" fill="' + shade(c, -.2) + '"/><text x="' + (x + 19) + '" y="48" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">' + t + '</text>').join('') + '</svg>',
   shelf: '<svg viewBox="0 0 100 130"><rect x="2" y="2" width="96" height="126" rx="3" fill="#b5844e"/>' + [8, 48, 88].map(y => '<rect x="8" y="' + y + '" width="84" height="34" fill="#5e3f22"/>' + [0, 1, 2, 3, 4, 5, 6].map(i => '<rect x="' + (10 + i * 12) + '" y="' + (y + 4 + (i % 3) * 2) + '" width="10" height="' + (30 - (i % 3) * 2) + '" fill="' + ['#e8574a', '#f6c445', '#4fb58b', '#5d90e8', '#b88ee2', '#f39257', '#7fcfc0'][(i + y) % 7] + '"/>').join('')).join('') + '</svg>',
+  // 2026-11-04 平常窗前的吊飾（日系）：晴天娃娃、風鈴（下面掛一張短籤）
+  teru: '<svg viewBox="0 0 50 92"><path d="M25 0V22" stroke="#9a8a7a" stroke-width="1.5"/><path d="M14 44Q9 64 6 80Q11 76 16 82Q20 76 25 83Q30 76 34 82Q39 76 44 80Q41 64 36 44Z" fill="#fff" stroke="#d9d3c7" stroke-width="1.5"/>'
+    + '<path d="M17 50Q16 64 15 76M25 50V78M33 50Q34 64 35 76" stroke="#ebe6dc" stroke-width="1.5" fill="none"/><circle cx="25" cy="33" r="13" fill="#fff" stroke="#d9d3c7" stroke-width="1.5"/>'
+    + '<path d="M14 45Q25 51 36 45" stroke="#e8574a" stroke-width="3.2" fill="none" stroke-linecap="round"/><circle cx="21.5" cy="48.5" r="2.6" fill="#e8574a"/><circle cx="28.5" cy="48.5" r="2.6" fill="#e8574a"/>'
+    + '<circle cx="20" cy="32" r="1.7" fill="#3a3030"/><circle cx="30" cy="32" r="1.7" fill="#3a3030"/><path d="M21.5 37Q25 40 28.5 37" stroke="#5a4a3a" stroke-width="1.4" fill="none" stroke-linecap="round"/>'
+    + '<ellipse cx="16.5" cy="36.5" rx="2.6" ry="1.6" fill="#f6a5a5" opacity=".75"/><ellipse cx="33.5" cy="36.5" rx="2.6" ry="1.6" fill="#f6a5a5" opacity=".75"/></svg>',
+  chime: c => '<svg viewBox="0 0 40 92"><path d="M20 0V13" stroke="#9a8a7a" stroke-width="1.5"/><path d="M8 34Q8 14 20 13Q32 14 32 34Z" fill="' + c + '" fill-opacity=".55" stroke="#fff" stroke-width="1.2"/>'
+    + '<path d="M12 30Q12 19 19 17" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".85"/><circle cx="24" cy="25" r="3" fill="#e8574a" opacity=".85"/><circle cx="17" cy="27" r="2" fill="#f6c445" opacity=".9"/>'
+    + '<ellipse cx="20" cy="34" rx="12" ry="3" fill="' + c + '" fill-opacity=".85"/><path d="M20 34V54" stroke="#9a8a7a" stroke-width="1.2"/><circle cx="20" cy="40" r="2.2" fill="#cfe9f2" stroke="#9ac3d2"/>'
+    + '<rect x="13.5" y="54" width="13" height="34" rx="1.5" fill="#fff6d8" stroke="#e2c27a"/><path d="M17 60H23M17 65H23M17 70H22" stroke="#e2a54d" stroke-width="1.3"/></svg>',
   beanbag: '<svg viewBox="0 0 70 50"><path d="M6 46C0 30 10 8 34 6C58 4 70 26 64 46Z" fill="#f39257"/><path d="M14 30Q34 20 56 30" stroke="#fff" stroke-opacity=".4" stroke-width="3" fill="none"/></svg>'
 };
 const WIN_ART = {
@@ -268,7 +282,8 @@ const Room = {
       eyeBtn('↺ 重設', '回到原本的角度和大小', () => this.setEye(EYE0)),
       h('span', { class: 'r-hint' }, '拖曳空地轉動・滾輪縮放'));
     this.tintEl = h('div', { class: 'r-tint' });   // 這個時段的整體色調（傍晚偏橘）
-    this.view = h('div', { class: 'r-view' }, this.scaler, this.tintEl, this.labs, this.ctl, this.ctl2, this.ctl3);
+    this.discEl = h('div', { class: 'r-disc' });   // 小組討論中：教室下方的提示列
+    this.view = h('div', { class: 'r-view' }, this.scaler, this.tintEl, this.labs, this.ctl, this.ctl2, this.ctl3, this.discEl);
     wrap.append(this.view);
     this.teacherEl = null; this.trayEl = null; this.cells = []; this.bbs = []; this.key = ''; this.tKey = ''; this.sayFor = null; this.base = null;
     if (!this.ro) this.ro = new ResizeObserver(() => this.fit());
@@ -282,14 +297,14 @@ const Room = {
     V.addEventListener('pointercancel', e => this.onUp(e));
     V.addEventListener('click', e => { if (this.justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
     V.addEventListener('wheel', e => {
-      if (e.target.closest('.r-ctl, .r-ctl2, .r-ctl3')) return;
+      if (e.target.closest('.r-ctl, .r-ctl2, .r-ctl3, .r-disc')) return;
       e.preventDefault(); this.eye.zoom = clamp(this.eye.zoom * Math.pow(1.0015, -e.deltaY), .6, 2.5); this.queueEye(); this.saveEye();
     }, { passive: false });
   },
   onDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.target.closest('.r-teacher') && this.base) { this.tdrag = { x: e.clientX, y: e.clientY, moved: false }; return; }
-    if (e.target.closest('button, .r-lw, .r-ctl, .r-ctl2, .r-ctl3')) return;
+    if (e.target.closest('button, .r-lw, .r-ctl, .r-ctl2, .r-ctl3, .r-disc')) return;
     this.ptrs = this.ptrs || new Map();
     this.ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     const P = [...this.ptrs.values()];
@@ -339,10 +354,12 @@ const Room = {
     this.wallsFacing();
     this.applyZoom(); this.measure();
   },
-  wallsFacing() {   // 鏡頭在哪一側，那一側的牆就不畫（窗台跟著藏）
-    const sx = Math.sin(this.eye.yaw * Math.PI / 180);
+  wallsFacing() {   // 鏡頭在哪一側，那一側的牆就不畫（窗台、牆上凸出來的東西跟著藏）
+    const sx = Math.sin(this.eye.yaw * Math.PI / 180), cy = Math.cos(this.eye.yaw * Math.PI / 180);
     this.view.classList.toggle('hide-l', sx < -.02);
     this.view.classList.toggle('hide-r', sx > .02);
+    this.view.classList.toggle('hide-b', cy < -.02);
+    this.view.classList.toggle('hide-f', cy > .02);
   },
   /* 立體人物（toon.js）：立牌直立、轉向鏡頭；依鏡頭和人物面向的角度差，每 10 度（簡單樣式 20 度）重畫一次，畫過的角度記起來 */
   toon(cls, x, y, w, ht, z, face, draw, props) {
@@ -382,7 +399,7 @@ const Room = {
   layoutKey() {
     const i = D.info, seats = D.students.map(s => s.id + ':' + (seatOK(s) ? s.seat.join('.') : '-') + ':' + (isAbsent(s.id) ? 1 : 0) + ':' + (Groups.colorOf(s) || '')).join('|');
     const G = Groups.clusters(), gk = G ? G.map(g => g.name + '=' + g.ids.join(',')).join(';') : '';
-    return [i.rows, i.cols, this.theme(), i.floor, i.deskItem, i.ac !== false, D.clockStyle, Look.fine, Look.tag, i.teacher.avatar, Light.time(), Light.season(), i.outfitSeed || '',
+    return [i.rows, i.cols, this.theme(), i.floor, i.deskItem, i.ac !== false, D.clockStyle, Look.fine, Look.tag, i.teacher.avatar, Light.time(), Light.season(), i.outfitSeed || '', i.className,
       UI.heralds.map(x => x.sid + '=' + x.text).join('|'), seats, gk].join('/');
   },
   add(cls, tf, w, ht, props, ...kids) {
@@ -486,21 +503,38 @@ const Room = {
     // 2026-11-03：三角彩旗拿掉（只有運動會留萬國旗），改掛各主題的掛飾（GARLAND），牆面和牆裙也照主題換色（THEME_WALL）
     const { W, L, th } = this, WH = RM.WH, gar = GARLAND[th], [wc, wn] = THEME_WALL[th] || THEME_WALL.none;
     const paint = (el, k) => { const s = el.style; s.setProperty('--wallc', shade(wc, -.03 * k)); s.setProperty('--wain', shade(wn, -.05 * k)); s.setProperty('--wline', shade(wn, .45)); s.setProperty('--wbase', shade(wn, -.28)); return el; };
-    const garland = (x, w, top, ht = 64) => h('div', { class: 'r-garland', style: 'left:' + Math.round(x) + 'px;width:' + Math.round(w) + 'px;top:' + top + 'px;height:' + ht + 'px;background-image:' + svgURL(gar) + ';background-size:' + ht * 2 + 'px ' + ht + 'px' });
+    const garStyle = ht => 'background-image:' + svgURL(gar) + ';background-size:' + ht * 2 + 'px ' + ht + 'px';   // 掛飾：一段 200×100 的圖橫向重複
     const bw = Math.round(clamp(W * .5, 260, 600)), sw = (W - bw) / 2, lc = Math.round(sw / 2), rc = Math.round(W - sw / 2);
-    const at = (x, el) => { el.style.left = x + 'px'; return el; };
+    // 2026-11-04 使用者要求「教室所有布置與物品要立體化（例如冷氣機、窗邊的吊飾）」：牆上只剩油漆和窗戶玻璃，
+    // 冷氣、時鐘、公佈欄、班名牌、門、黑板、窗框都改成從牆面凸出來的方塊（wbox），燈籠、晴天娃娃這些吊飾改成掛在半空中、會晃的立牌（hang），
+    // 掛飾、海報離牆一點點、有影子。也盡量都能點（2026-11-04 使用者要求布置要能互動或連動）
+    const go = (title, f) => ({ title, onclick: f });
     // 後牆：冷氣、班名、公佈欄、時鐘
     const back = this.backWall = paint(this.add('r-wall back bf', standAt(0, 0, WH), W, WH), 0);
-    this.signEl = at(lc, h('div', { class: 'r-sign' }));
-    this.bb = h('div', { class: 'r-bb', title: '點一下編輯公佈欄', style: { width: bw + 'px' }, onclick: () => this.editBoard() });
+    this.bb = this.wbox('b', (W - bw) / 2, 62, bw, 142, 9, 'r-bb3', go('點一下打開公佈欄', () => BBoard.open()));
+    this.bbSig = '';
+    const cn = D.info.className || '我們班', sgw = Math.max(96, [...cn].length * 27 + 46);
+    this.signEl = this.wbox('b', lc - sgw / 2, 150, sgw, 48, 8, 'r-sign3', go('點一下改班級名稱', () => Settings.open('class')));
     // 時鐘掛在右邊冷氣和右邊窗戶中間、和冷氣一樣高（使用者指定）：空間不夠就把右邊冷氣往公佈欄挪一點，還是不夠才掛到冷氣下面
     const ana = D.clockStyle === 'analog', ac = D.info.ac !== false, cw = ana ? 62 : 86, need = cw + 24;
     const acR = ac ? Math.round(Math.max(W - sw + 70, Math.min(rc, W - need - 64))) : rc, room = W - acR - 64 >= cw + 8;
-    const ckX = !ac ? rc : room ? Math.round((acR + 64 + W) / 2) : acR;
-    this.clockEl = at(ckX, h('div', { class: 'r-clock ' + (ac && !room ? 'under ' : 'side ') + (ana ? 'an' : 'dg'), title: '點一下打開大時鐘', onclick: () => BigClock.open(), innerHTML: ana ? ART_CLOCK : '<b></b>' }));
-    back.append(this.signEl, this.bb);
-    if (ac) for (const x of [lc, acR]) back.append(at(x, h('div', { class: 'r-ac', title: '點一下開關冷氣', onclick: () => AC.toggle() }, h('b', { class: 'r-ac-led' }), h('i'), h('div', { class: 'r-wind' }))));
-    const poster = (t, cls = '') => '<div class="r-poster ' + cls + '">' + t + '</div>';
+    const ckX = !ac ? rc : room ? Math.round((acR + 64 + W) / 2) : acR, under = ac && !room, ck = go('點一下打開大時鐘', () => BigClock.open());
+    if (ana) {   // 圓形掛鐘：幾片深綠圓板疊起來當鐘框的厚度，最前面是鐘面
+      const S = under ? 66 : 62, v = under ? 148 : 53;
+      for (const [o, c] of [[1, '#22362d'], [3.5, '#28413a'], [6, '#2f4a3f']]) this.wbox('b', ckX - S / 2, v, S, S, 0, 'r-clkrim', Object.assign({ style: 'background:' + c }, ck), o);
+      this.clockEl = this.wbox('b', ckX - S / 2, v, S, S, 0, 'r-clk an', Object.assign({ innerHTML: ART_CLOCK }, ck), 8.5);
+    } else {
+      const [w2, h2, v] = under ? [106, 40, 158] : [86, 36, 66];
+      this.clockEl = this.wbox('b', ckX - w2 / 2, v, w2, h2, 10, 'r-clk dg' + (under ? ' big' : ''), ck);
+      this.clockEl.append(h('b'));
+    }
+    // 冷氣：白色方塊（正面有出風口和溫度燈），開著的時候下面斜斜吹出一片風
+    if (ac) for (const x of [lc, acR]) {
+      this.wbox('b', x - 64, 62, 128, 44, 30, 'r-ac3', go('點一下開關冷氣', () => AC.toggle())).append(h('b', { class: 'r-ac-led' }), h('i'));
+      const a = 38 * Math.PI / 180;
+      this.add('r-wind3 sl-b', m3([x - 60, 26, WH - 108], [1, 0, 0], [0, Math.sin(a), -Math.cos(a)], [0, Math.cos(a), Math.sin(a)]), 120, 74);
+    }
+    const poster = (t, cls = '') => ({ t, cls });
     const deco = {
       halloween: [ART.ghost, ART.bats], xmas: [ART.wreath, ART.stocking], cny: [ART.lantern, ART.lantern],
       moon: [ART.plantern('#e97a45') + ART.plantern('#f6c445'), ART.plantern('#7fb3d5') + ART.plantern('#e63946')],
@@ -508,50 +542,97 @@ const Room = {
       mom: [ART.carnations, poster('感謝有您', 'pink')], dragon: [ART.sachets, ART.sachets],
       lunch: [poster('細嚼慢嚥'), poster('吃完分類')], reading: [poster('閱讀時光', 'green'), poster('好書分享', 'green')], exam: [poster('安靜作答', 'exam'), poster('考試中', 'exam')]
     }[th];
-    if (deco) back.append(at(lc, h('div', { class: 'r-deco', innerHTML: deco[0] })), at(rc, h('div', { class: 'r-deco', innerHTML: deco[1] })));
-    if (gar) back.append(garland(0, W, 0));
-    if (th === 'sports') back.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(W) }));
-    back.append(this.clockEl);
-    // 兩側：大片窗戶（窗外是季節風景），窗戶下面是立體窗台。左牆由前往後畫、右牆由後往前畫
+    // 後牆下半部左右兩邊的應景裝飾：離牆一點點、影子落在牆上（點一下跳一跳）；海報是有厚度的板子
+    if (deco) [lc, rc].forEach((x, i) => {
+      const a = deco[i];
+      if (typeof a === 'object') { this.poster('b', x, 212, a.t, a.cls); return; }
+      const ht = th === 'cny' ? 82 : 62, w = artW(a, ht);
+      this.tap(this.wbox('b', x - w / 2, 210, w, ht, 0, 'r-plate', { innerHTML: a }, 6));
+    });
+    if (gar) this.wbox('b', 0, 0, W, 64, 0, 'r-garland3', { style: garStyle(64) }, 12);
+    if (th === 'sports') this.wbox('b', 0, 0, W, 70, 0, 'r-bunt3', { innerHTML: flagsSVG(W) }, 10);
+    // 兩側：大片窗戶，窗戶下面是立體窗台。左牆由前往後畫、右牆由後往前畫
     const left = paint(this.add('r-wall side bf', faceR(0, L, WH), L, WH), 1);
     const right = paint(this.add('r-wall side bf', faceL(W, 0, WH), L, WH), 1);
     this.bands = [{ side: 'left', y1: 70, y2: L - 70 }, { side: 'right', y1: 60, y2: Math.max(260, L - 400) }];
-    left.append(this.wband(70, L - 140));
-    right.append(this.wband(60, this.bands[1].y2 - 60));
-    if (gar) left.append(garland(56, L - 112, 14, 72)), right.append(garland(46, this.bands[1].y2 - 32, 14, 72));   // 掛在窗戶上緣，兩邊多出一點
-    // 窗前再垂掛幾個大一點的應景吊飾（使用者舉例：元宵節在窗戶周圍掛燈籠），大約每兩格窗一個，顏色輪流
+    const winL = [70, L - 140], winR = [60, this.bands[1].y2 - 60];
+    left.append(this.wband(...winL)); right.append(this.wband(...winR));
+    this.winFrame('l', ...winL); this.winFrame('r', ...winR);
+    if (gar) { this.wbox('l', 56, 14, L - 112, 72, 0, 'r-garland3', { style: garStyle(72) }, 12); this.wbox('r', 46, 14, winR[1] + 28, 72, 0, 'r-garland3', { style: garStyle(72) }, 12); }   // 掛在窗戶上緣，兩邊多出一點
+    // 窗前垂掛的應景吊飾（使用者舉例：元宵節在窗戶周圍掛燈籠），大約每兩格窗一個，顏色輪流；平常是晴天娃娃和風鈴
     const drop = {
       lantern: ['#f28c38', '#9b59d0', '#e98dad', '#4fb3e8'].map(c => ART.flantern(c)), cny: [ART.lantern], moon: ['#e97a45', '#f6c445', '#7fb3d5'].map(c => ART.plantern(c)),
-      halloween: [ART.bats, ART.ghost], xmas: [ART.wreath, ART.stocking], dragon: [ART.sachets], kids: [ART.star], mom: [ART.carnations]
+      halloween: [ART.bats, ART.ghost], xmas: [ART.wreath, ART.stocking], dragon: [ART.sachets], kids: [ART.star], mom: [ART.carnations],
+      none: [ART.teru, ART.chime('#7ec8e3'), ART.teru, ART.chime('#f29fb5')], reading: [ART.chime('#9fd3a8'), ART.teru], lunch: [ART.teru, ART.chime('#f6c445')]
     }[th];
-    if (drop) [[left, 70, L - 140], [right, 60, this.bands[1].y2 - 60]].forEach(([wall, x, w], j) => {
+    if (drop) [['l', ...winL], ['r', ...winR]].forEach(([wall, x, w], j) => {
       const n = Math.max(1, Math.round(w / 230));
-      for (let i = 0; i < n; i++) wall.append(h('div', { class: 'r-wdrop', style: { left: Math.round(x + (i + .5) * w / n) + 'px' }, innerHTML: drop[(i + j) % drop.length] }));
+      for (let i = 0; i < n; i++) {
+        const u = x + (i + .5) * w / n;
+        this.hang(drop[(i + j) % drop.length], wall === 'l' ? 40 : W - 40, wall === 'l' ? L - u : u, 92, WH - 22, 'sl-' + wall);
+      }
     });
-    const door = h('div', { class: 'r-door', style: { left: (L - 340) + 'px' } }, h('i'));
+    // 門（點一下點名）：凸出來的門框＋門板，門上的應景裝飾
+    const door = this.wbox('r', L - 340, WH - 222, 136, 222, 8, 'r-door3', go('點一下點名', () => toggleMode('attend')));
+    door.append(h('i'), h('u'));
     if (th === 'cny') door.append(h('b', { class: 'r-fu' }, h('span', null, '福')));
     if (th === 'halloween') door.append(h('div', { class: 'r-doordeco', innerHTML: ART.pumpkin }));
     if (th === 'xmas') door.append(h('div', { class: 'r-doordeco', innerHTML: ART.wreath }));
     if (th === 'exam') door.append(h('div', { class: 'r-doorsign' }, '考試中'));
-    right.append(door);
-    if (th === 'cny') right.append(h('div', { class: 'r-cl', style: { left: (L - 384) + 'px' } }, '五福臨門'), h('div', { class: 'r-cl', style: { left: (L - 192) + 'px' } }, '金玉滿堂'));
-    if (th === 'dragon') right.append(h('div', { class: 'r-herbs', style: { left: (L - 384) + 'px' }, innerHTML: ART.herbs }), h('div', { class: 'r-herbs', style: { left: (L - 196) + 'px' }, innerHTML: ART.herbs }));
-    if (th === 'sports') { left.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(L) })); right.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(L) })); }
+    if (th === 'cny') for (const [u, t] of [[L - 384, '五福臨門'], [L - 192, '金玉滿堂']]) this.wbox('r', u, 74, 38, 136, 3, 'r-cl3').append(t);
+    if (th === 'dragon') for (const u of [L - 384, L - 196]) this.wbox('r', u, 70, 36, 108, 0, 'r-plate', { innerHTML: ART.herbs }, 6);
+    if (th === 'sports') { this.wbox('l', 0, 0, L, 70, 0, 'r-bunt3', { innerHTML: flagsSVG(L) }, 10); this.wbox('r', 0, 0, L, 70, 0, 'r-bunt3', { innerHTML: flagsSVG(L) }, 10); }
     // 前牆：黑板（老師視角時在鏡頭這邊，自動不畫；轉到學生視角才看得到）
-    const front = paint(this.add('r-wall front bf', backAt(W, L, WH), W, WH), 0);
-    // 點黑板打開聯絡簿（2026-11-04 主畫面上方的聯絡簿拿掉了，改從這裡寫）
-    this.chalkEl = h('div', { class: 'r-chalk', title: '點一下打開聯絡簿', style: { width: Math.round(clamp(W * .64, 320, 820)) + 'px' }, onclick: () => { D.board.mode = 'contact'; save(); Board.edit(); } });
-    front.append(this.chalkEl);
-    if (th === 'exam') front.append(at(Math.round(W * .1), h('div', { class: 'r-poster exam r-fp' }, '安靜作答')));
-    if (gar) front.append(garland(0, W, 0, 48));
+    paint(this.add('r-wall front bf', backAt(W, L, WH), W, WH), 0);
+    // 點黑板打開聯絡簿（2026-11-04 主畫面上方的聯絡簿拿掉了，改從這裡寫）；黑板有木框厚度，下面一條放粉筆的溝槽
+    const cbw = Math.round(clamp(W * .64, 320, 820)), cbu = (W - cbw) / 2;
+    this.chalkEl = this.wbox('f', cbu, 52, cbw, 162, 10, 'r-chalk', go('點一下打開聯絡簿', () => { D.board.mode = 'contact'; save(); Board.edit(); }));
+    this.wbox('f', cbu + cbw * .08, 212, cbw * .84, 7, 18, 'r-ctray');
+    if (th === 'exam') this.poster('f', Math.round(W * .1), 80, '安靜作答', 'exam');
+    if (gar) this.wbox('f', 0, 0, W, 48, 0, 'r-garland3', { style: garStyle(48) }, 12);
   },
-  // 一整排大窗：底下是季節風景，上面一層是這個時段的天色，再上面是白色窗框（約每 110 一格）
+  // 牆上凸出來的立體方塊：wall 是 'b' 後牆、'f' 前牆（黑板那面）、'l' 左牆、'r' 右牆；u、v 是從教室裡面看那面牆，方塊左上角離牆左邊、牆頂多遠；
+  // d 是凸出多少（d=0 就只有一片離牆 off 的板子）。回傳朝教室裡面的那一面（放內容）；牆轉到鏡頭這邊不畫時，這些也一起藏起來（sl-*）
+  wbox(wall, u, v, w, ht, d, cls, props, off = 0) {
+    const { W, L } = this, z = RM.WH - v, t = ' bf sl-' + wall, e = off + d;
+    let F, T, S1, S2;
+    if (wall === 'b') { F = standAt(u, e, z); T = [flatAt(u, off, z), w, d]; S1 = faceL(u, off, z); S2 = faceR(u + w, e, z); }
+    else if (wall === 'f') { F = backAt(W - u, L - e, z); T = [flatAt(W - u - w, L - e, z), w, d]; S1 = faceR(W - u, L - off, z); S2 = faceL(W - u - w, L - e, z); }
+    else if (wall === 'l') { F = faceR(e, L - u, z); T = [flatAt(off, L - u - w, z), d, w]; S1 = standAt(off, L - u, z); S2 = backAt(e, L - u - w, z); }
+    else { F = faceL(W - e, u, z); T = [flatAt(W - e, u, z), d, w]; S1 = standAt(W - e, u + w, z); S2 = backAt(W - off, u, z); }
+    const face = this.add(cls + t, F, w, ht, props);
+    if (d > 0) {
+      const ev = props && props.onclick ? { onclick: props.onclick, title: props.title } : null;
+      this.add(cls + '-t' + t, T[0], T[1], T[2], ev);
+      this.add(cls + '-s' + t, S1, d, ht, ev); this.add(cls + '-s' + t, S2, d, ht, ev);
+    }
+    return face;
+  },
+  // 海報、標語：離牆一點點的板子（寬度照字數）
+  poster(wall, cx, v, text, cls = '') {
+    const fs = cls === 'exam' ? 26 : 22, w = [...text].length * fs + 36, ht = Math.round(fs * 1.2 + 20);
+    return this.wbox(wall, cx - w / 2, v, w, ht, 3, 'r-post3 ' + cls, null, 2).append(text);
+  },
+  // 掛在半空中的吊飾（燈籠、晴天娃娃、風鈴…）：轉向鏡頭的立牌，上緣掛在 zTop，會輕輕晃，點一下晃大一點
+  hang(art, x, y, ht, zTop, tag) {
+    const w = artW(art, ht), el = this.bill('r-hang ' + tag, x, y, w, ht, .22, zTop - ht, { innerHTML: art, title: '點一下搖一搖' });
+    el.style.setProperty('--d', -((hashOf(x + ',' + y) % 30) / 10) + 's');
+    el.addEventListener('click', () => wiggle(el));
+    return el;
+  },
+  // 窗框：上框、左右框、每一格的直框都是凸出來的白色木條（點窗戶可以調陽光、換佈景）
+  winFrame(wall, u, w) {
+    const pane = Math.max(1, Math.round(w / 110)), go = { title: '點一下調整陽光、換佈景', onclick: () => this.pickTheme() };
+    this.wbox(wall, u - 6, 26, w + 12, 10, 8, 'r-wf', go);
+    this.wbox(wall, u - 6, 36, 10, 158, 8, 'r-wf', go); this.wbox(wall, u + w - 4, 36, 10, 158, 8, 'r-wf', go);
+    for (let i = 1; i < pane; i++) this.wbox(wall, u + i * w / pane - 3, 36, 6, 158, 5, 'r-wf', go);
+  },
+  // 一整排大窗：玻璃＋這個時段的天色，中間一條橫的窗框（直的窗框是 winFrame 的立體木條）
   wband(x, w) {
-    const pane = Math.max(1, Math.round(w / 110));
     const fr = h('div', { class: 'r-wframe' });
-    // 2026-11-03 第四次（使用者要求）：窗外不放風景，只有水藍透明感的玻璃（色碼照 ChatGPT），上面一層時段天色、白色窗框
-    fr.style.backgroundImage = `repeating-linear-gradient(90deg, #f5f0e5 0 4px, transparent 4px ${(w / pane).toFixed(1)}px), linear-gradient(transparent 36%, #f5f0e5 36%, #f5f0e5 calc(36% + 4px), transparent calc(36% + 4px))`;
-    return h('div', { class: 'r-wband', style: { left: Math.round(x) + 'px', width: Math.round(w) + 'px' } },
+    // 2026-11-03 第四次（使用者要求）：窗外不放風景，只有水藍透明感的玻璃（色碼照 ChatGPT）
+    fr.style.backgroundImage = 'linear-gradient(transparent 36%, #f5f0e5 36%, #f5f0e5 calc(36% + 4px), transparent calc(36% + 4px))';
+    return h('div', { class: 'r-wband', title: '點一下調整陽光、換佈景', onclick: () => this.pickTheme(), style: { left: Math.round(x) + 'px', width: Math.round(w) + 'px' } },
       h('div', { class: 'r-wsky', style: { background: (LIGHTS[this.time] || {}).sky || 'transparent' } }), h('div', { class: 'r-glass' }), fr);
   },
   // 窗台：窗戶下緣的一塊木板（上面＋前緣），上面放盆栽和節日小東西
@@ -565,7 +646,7 @@ const Room = {
       const n = Math.max(2, Math.floor(L2 / 150)), cx = b.side === 'left' ? 13 : W - 13;
       for (let i = 0; i < n; i++) {
         const y = b.y1 + (i + .5) * L2 / n, art = items && i % 2 === 1 ? items : SCENE.plants[i % 3];
-        this.prop(art, cx, y, 34, 45, Z, .9).classList.add(tag.trim());
+        this.tap(this.prop(art, cx, y, 34, 45, Z, .9)).classList.add(tag.trim());
       }
     }
   },
@@ -600,7 +681,11 @@ const Room = {
     const cw = Math.min(cols * 32 + 12, this.W - 260), x = (this.W - cw) / 2;
     const { front } = this.box('r-cub', x, 0, cw, 36, RM.TD);
     front.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
-    for (let i = 1; i <= cols * 2; i++) front.append(h('i', null, i <= n ? i : ''));
+    // 置物櫃的號碼格：點一下就是點那個座號的同學（2026-11-04 布置要能連動）
+    for (let i = 1; i <= cols * 2; i++) {
+      const s = i <= n && roster().find(x => x.no === i);
+      front.append(h('i', s ? { class: 'on', title: i + ' 號' + (s.name ? ' ' + s.name : '') + '的置物櫃', onclick: e => { e.stopPropagation(); tileClick(s); } } : null, i <= n ? i : ''));
+    }
     this.cub = { x, w: cw };
   },
   // 講桌（2026-11-03 使用者要求縮小）
@@ -608,13 +693,13 @@ const Room = {
     const W = this.W, tw = Math.min(RM.TDW, W - 140), y = this.L - RM.FRONT + 70, x = W / 2 - tw / 2;
     this.tdesk = { x, y, w: tw, d: RM.TDD };
     this.box('r-td', x, y, tw, RM.TDD, RM.TDH);
-    this.prop(ART.books, x + 32, y + 34, 44, 25, RM.TDH, 1);
+    this.tap(this.prop(ART.books, x + 32, y + 34, 44, 25, RM.TDH, 1), '點一下打開作業', () => Homework.open());
     if (D.info.ac !== false) this.bill('r-remote', x + 72, y + 36, 19, 34, 1, RM.TDH, { innerHTML: ART.remote, title: '冷氣遙控器', onclick: () => AC.remote() });
   },
   props() {
     const { W, L, th } = this, td = this.tdesk, dz = RM.TDH, dx = td.x + td.w - 36, dy = td.y + 36, cub = this.cub;
-    if (th !== 'reading') this.prop(ART.plant, 52, 64, 64, 120);
-    const P = (...a) => this.prop(...a);
+    const P = (...a) => this.tap(this.prop(...a));   // 盆栽、節日擺飾：點一下搖一搖
+    if (th !== 'reading') P(ART.plant, 52, 64, 64, 120);
     switch (th) {
       case 'halloween':
         P(ART.pumpkin, W - 58, 74, 72, 62); P(ART.pumpkin, W - 56, L - 200, 62, 54); P(ART.pumpkin, dx, dy, 44, 38, dz);
@@ -634,7 +719,13 @@ const Room = {
         P(ART.shelf, 70, 60, 100, 130); P(ART.beanbag, 160, 140, 70, 50); break;
     }
     // 教室左前方（老師視角畫面的左下角）的地板上放一個立體可愛的大擺飾（2026-11-03 使用者要求，例如端午節的龍舟；圖是 ChatGPT 設計的 FLOOR_ART，240×160）
-    if (FLOOR_ART[th]) P(FLOOR_ART[th], 40 + 114, L - 60, 228, 152);
+    if (FLOOR_ART[th]) this.tap(this.prop(FLOOR_ART[th], 40 + 114, L - 60, 228, 152), '點一下換佈景', () => this.pickTheme());
+  },
+  // 讓擺飾可以點：沒給 f 就搖一搖
+  tap(el, title = '點一下搖一搖', f) {
+    el.classList.add('r-tap'); el.title = title;
+    el.addEventListener('click', () => { wiggle(el); if (f) f(); });
+    return el;
   },
   heralds(th, fine) {
     const L = UI.heralds.filter(x => stu(x.sid)), n = L.length;
@@ -674,9 +765,10 @@ const Room = {
     for (const c of this.cells) {
       const r = c.anchor.getBoundingClientRect();
       // 名牌大小可在設定「外觀」選；舉牌同學的名牌本來就比較大，放大會蓋到牌子上的字，所以不跟著放大
-      c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * 20, 13, 26) * Look.tagK;   // 名牌照桌子（舉牌的照牌子）在畫面上的大小，最小 13px×大小設定（大＝19.5px）
+      // 2026-11-04 使用者要求名牌照班班的比例縮小、不擋臉：字約桌面寬的 0.16（名牌比桌子窄一點），最小 11px、最大 20px，再乘「外觀 → 教室名牌大小」
+      c.fs = clamp(Math.max(r.width, r.height * 1.6) * RM.DW / c.aw * .16, 11, 20) * Look.tagK;
       c.face = null; c.pts = null;
-      if (c.glab) { c.fs = 15 * Look.tagK; [c.ax, c.ay] = [c.x, c.y] = pt(c.anchor); continue; }   // 組名牌比名牌大一點
+      if (c.glab) { c.fs = 14 * Look.tagK; [c.ax, c.ay] = [c.x, c.y] = pt(c.anchor); continue; }   // 組名牌比名牌大一點
       if (c.herald) { c.ax = c.x = r.left + r.width / 2 - V.left; c.ay = c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
       if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 Toon.KID.R）
         const [x, y] = pt(c.faceA); c.face = { x, y, r: c.kid.getBoundingClientRect().width * Toon.KID.R / 110 };
@@ -730,6 +822,7 @@ const Room = {
     // 先看同一高度左右相鄰的名牌：原位放不下就一起縮到剛好放得下（同一排大小一致，不會先放的很大、夾在中間的被擠到沒位子）
     for (let i = 0; i < todo.length; i++) for (let j = i + 1; j < todo.length; j++) {
       const p = todo[i], q = todo[j];
+      if (p.glab || q.glab) continue;   // 組名牌放不下就自己往上下挪，不要害旁邊同學的名牌一起縮小
       if (Math.abs(p.ay - q.ay) >= (p.h0 + q.h0) / 2) continue;
       const k = (Math.abs(p.ax - q.ax) - G) / ((p.w0 + q.w0) / 2);
       if (k < .55) continue;   // 幾乎疊在同一個位置（例如舉牌的同學站在別人座位旁）：縮小也沒用，交給後面一個往上下挪
@@ -903,24 +996,23 @@ const Room = {
     if (!this.bb) return;
     this.signEl.textContent = D.info.className || '我們班';
     if (this.chalkEl) this.chalkEl.replaceChildren(Board.render(false));
-    const duty = Board.dutyToday();
-    const card = (cls, title, lines, empty) => h('div', { class: 'r-card ' + cls }, h('b', null, title),
-      lines.length ? lines.slice(0, 5).map(t => h('div', null, t)) : h('div', { class: 'r-empty' }, empty));
-    this.bb.replaceChildren(
-      card('c1', '班級公約', D.info.rules || [], '點一下寫公約'),
-      card('c2', '榮譽榜', D.info.honor || [], '點一下寫榮譽榜'),
-      card('c3', '今日值日生', duty.map(s => nameOf(s)), '黑板裡可設定'),
-      card('c4', '小叮嚀', [D.info.tip || D.clockNote].filter(Boolean), '今天也要加油！'));
+    // 公佈欄（BBoard）：內容沒變就不重畫（裡面有作品照片）
+    const sig = BBoard.sig();
+    if (sig === this.bbSig) return;
+    this.bbSig = sig;
+    const cards = BBoard.cards();
+    this.bb.style.gridTemplateColumns = cards.length ? cards.map(c => c.classList.contains('bbk-works') ? 'minmax(0,1.7fr)' : 'minmax(0,1fr)').join(' ') : '1fr';
+    this.bb.replaceChildren(...(cards.length ? cards : [h('div', { class: 'r-empty bb-none' }, '公佈欄（點一下選要貼什麼）')]));
   },
   drawAC() {
     if (!this.backWall) return;
     const s = AC.get(), col = AC.color(s.temp), n = s.fan * 2 + 1;
     const wind = s.on ? '<svg viewBox="0 0 124 80">' + Array.from({ length: n }, (_, i) => '<path d="M' + (12 + i * 100 / (n - 1)).toFixed(1) + ' 0q7 13 0 26t0 26t0 26" stroke="' + col + '"/>').join('') + '</svg>' : '';
-    for (const el of this.backWall.querySelectorAll('.r-ac')) {
+    for (const el of this.floor.querySelectorAll('.r-ac3')) {
       el.classList.toggle('on', s.on);
       el.querySelector('.r-ac-led').textContent = s.on ? s.temp + '°' : '';
-      el.querySelector('.r-wind').innerHTML = wind;
     }
+    for (const el of this.floor.querySelectorAll('.r-wind3')) el.innerHTML = wind;
   },
   drawTray() {
     if (this.trayEl) this.trayEl.remove();
@@ -934,6 +1026,16 @@ const Room = {
       h('button', { class: 'btn sm', title: '換佈景', onclick: () => this.pickTheme() }, THEME_ICON[th] + ' 佈景：' + THEMES[th].name + (cur === 'auto' ? '（自動）' : '')),
       h('button', { class: 'btn sm', title: '改用平面座位表', onclick: () => { D.info.view = 'flat'; save(); refresh(); } }, '▦ 平面'));
     this.ctl2.replaceChildren(UI.heralds.length ? h('button', { class: 'btn sm', onclick: () => Herald.menu() }, '🪧 ' + UI.heralds.length + ' 位舉牌') : '');
+    // 小組討論中：教室下方一條深色提示列（2026-11-04 使用者要求，參考班班小組討論的畫面；平面座位時還是用上方的提示列）
+    const on = !!UI.temp && UI.mode === 'normal';
+    this.view.classList.toggle('disc', on);
+    this.discEl.replaceChildren(...(on ? [
+      h('div', { class: 'dc-l' }, h('b', null, '🗣 小組討論'), h('span', null, '全班隨機分成 ' + UI.temp.length + ' 組，同一組坐在一起；結束或重新整理網頁就回到原本的座位')),
+      h('div', { class: 'dc-b' },
+        h('button', { class: 'btn', onclick: () => Groups.startTemp(UI.temp.length) }, '🔀 重新分組'),
+        h('button', { class: 'btn', onclick: () => Groups.board() }, '📋 組員名單'),
+        h('button', { class: 'btn', onclick: () => Groups.compStart(Groups.tempList()) }, '🏆 單次競賽計分'),
+        h('button', { class: 'btn end', onclick: () => Groups.endTemp() }, '結束討論'))] : []));
   },
   tickClock() {
     if (!this.clockEl || !this.clockEl.isConnected) return;
@@ -962,18 +1064,163 @@ const Room = {
         themeCards(() => c.close()));
     }, { cls: 'wide' });
   },
-  editBoard() {
-    modal('公佈欄', c => {
-      const lines = (k, lab, ph) => [h('label', { class: 'lbl' }, lab), h('textarea', {
-        class: 'inp', rows: 4, placeholder: ph, value: (D.info[k] || []).join('\n'),
-        oninput: e => { D.info[k] = e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean).slice(0, 8); save(); }
-      })];
-      c.body.append(h('p', { class: 'muted' }, '貼在 3D 教室後面牆上的公佈欄。值日生會照「黑板 → 值日生」的設定自動換；小小宣導員也從班級公約挑句子。'),
-        ...lines('rules', '班級公約（一行一條，最多顯示 5 條）', '上課專心聽講'),
-        ...lines('honor', '榮譽榜（一行一條）', '例如：整潔比賽第一名'),
-        h('label', { class: 'lbl' }, '小叮嚀'),
-        h('input', { class: 'inp', value: D.info.tip || '', placeholder: '今天也要加油！', oninput: e => { D.info.tip = e.target.value.trim(); save(); } }));
-    }, { onClose: () => refresh() });
+  editBoard(tab) { BBoard.open(tab); }
+};
+
+/* ---------- 公佈欄（2026-11-04 使用者要求，參考班班的公佈欄功能自己做）：點教室後面的公佈欄打開；
+   分頁寫班級公約、榮譽榜（自動列分數最高的 5 位，或自己寫）、小叮嚀，上傳優良作品照片（公佈欄貼最新的 3 件），
+   選公佈欄要貼哪幾項，也可以投影。照片存在圖片庫（ImgDB，有登入雲端時也會同步），資料在 D.info（rules、honor、honorMode、tip、works、bbShow） ---------- */
+const BB_PARTS = [['rules', '班級公約'], ['honor', '榮譽榜'], ['duty', '今日值日生'], ['tip', '小叮嚀'], ['works', '優良作品']];
+const BBoard = {
+  tab: 'rules', thumbs: new Map(), full: new Map(), loading: new Set(), c: null,
+  show() { return Object.assign({ rules: true, honor: true, duty: true, tip: true, works: true }, D.info.bbShow || {}); },
+  works() { return (D.info.works || []).slice().sort((a, b) => b.at - a.at); },
+  posted() { return this.works().filter(w => w.on !== false).slice(0, 3); },
+  honorAuto() { return (D.info.honorMode || ((D.info.honor || []).length ? 'manual' : 'auto')) === 'auto'; },
+  honorList() {
+    if (!this.honorAuto()) return D.info.honor || [];
+    return roster().filter(s => (s.score || 0) > 0).sort((a, b) => b.score - a.score || a.no - b.no).slice(0, 5).map(s => nameOf(s));
+  },
+  tipList() { return [D.info.tip || D.clockNote].filter(Boolean); },
+  sig() {
+    const S = this.show();
+    return JSON.stringify([S, D.info.rules, this.honorList(), Board.dutyToday().map(s => s.id), this.tipList(), this.posted().map(w => [w.id, w.t, this.thumbs.has(w.id)])]);
+  },
+  // 照片：讀一次就記起來；公佈欄和清單用縮小的圖（不然 3D 教室每次重畫都要解很大的圖），投影才用原圖
+  load(id) {
+    if (this.thumbs.has(id) || this.loading.has(id)) return;
+    this.loading.add(id);
+    ImgDB.get(id).then(u => new Promise(res => {
+      if (!u) return res(['', '']);
+      const im = new Image();
+      im.onload = () => { const k = Math.min(1, 420 / Math.max(im.width, im.height)), cv = h('canvas', { width: Math.max(1, Math.round(im.width * k)), height: Math.max(1, Math.round(im.height * k)) }); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); res([cv.toDataURL('image/jpeg', .82), u]); };
+      im.onerror = () => res(['', '']); im.src = u;
+    })).catch(() => ['', '']).then(([t, u]) => {
+      this.loading.delete(id); this.thumbs.set(id, t); this.full.set(id, u);
+      for (const el of document.querySelectorAll('img[data-bb="' + id + '"]')) el.src = el.dataset.big ? u : t;
+      if (typeof Room === 'object' && Room.bb) Room.fillBoard();
+    });
+  },
+  img(id, big, cls = '') {
+    const el = h('img', { class: cls, alt: '作品', 'data-bb': id, 'data-big': big ? '1' : null, draggable: 'false' });
+    const u = (big ? this.full : this.thumbs).get(id);
+    if (u) el.src = u; else this.load(id);
+    return el;
+  },
+  // 3D 教室公佈欄上的紙卡（點哪一張就打開那一頁）
+  cards() {
+    const S = this.show(), out = [];
+    const card = (k, title, body) => h('div', { class: 'r-card bbk-' + k, onclick: e => { e.stopPropagation(); this.open(k === 'duty' ? null : k); } }, h('b', null, title), body);
+    const lines = (L, empty) => L.length ? L.slice(0, 5).map(t => h('div', null, t)) : h('div', { class: 'r-empty' }, empty);
+    if (S.rules) out.push(card('rules', '班級公約', lines(D.info.rules || [], '點一下寫公約')));
+    if (S.honor) out.push(card('honor', '榮譽榜', lines(this.honorList().map((t, i) => (i < 3 ? '🥇🥈🥉'.slice(i * 2, i * 2 + 2) : '・') + t), this.honorAuto() ? '加分後自動上榜' : '點一下寫榮譽榜')));
+    if (S.duty) out.push(card('duty', '今日值日生', lines(Board.dutyToday().map(s => nameOf(s)), '黑板裡可設定')));
+    if (S.tip) out.push(card('tip', '小叮嚀', lines(this.tipList(), '今天也要加油！')));
+    if (S.works) { const P = this.posted(); out.push(card('works', '優良作品', P.length ? h('div', { class: 'r-works n' + P.length }, P.map(w => this.img(w.id))) : h('div', { class: 'r-empty' }, '點一下貼作品照片'))); }
+    return out;
+  },
+  open(tab) {
+    if (tab) this.tab = tab;
+    if (this.c && !this.c.closed) return this.c.rebuild();
+    this.c = modal('📌 公佈欄', c => this.build(c), { cls: 'wide bbm', onClose: () => refresh() });
+  },
+  build(c) {
+    const tabs = [['rules', '班級公約'], ['honor', '榮譽榜'], ['tip', '小叮嚀'], ['works', '優良作品']];
+    c.body.append(h('div', { class: 'tabs' }, tabs.map(([k, t]) => h('button', { class: this.tab === k ? 'on' : '', onclick: () => { this.tab = k; c.rebuild(); } }, t))));
+    const p = h('div', { class: 'tabpane bb-pane' }); c.body.append(p);
+    (this['tab_' + this.tab] || this.tab_rules).call(this, p, c);
+    const S = this.show();
+    c.body.append(h('div', { class: 'bb-show' }, h('div', { class: 'lbl' }, '公佈欄要貼哪幾項（教室後面的公佈欄和投影都一樣）'),
+      h('div', { class: 'bb-tgls' }, BB_PARTS.map(([k, t]) => h('label', { class: 'bb-tgl' + (S[k] ? ' on' : '') },
+        h('input', { type: 'checkbox', checked: S[k], onchange: e => { D.info.bbShow = Object.assign(this.show(), { [k]: e.target.checked }); save(); refresh(); c.rebuild(); } }), h('span', null, t))))),
+      h('p', { class: 'muted small' }, '值日生照「黑板 → 值日生」的設定每天自動換。公佈欄在教室後面的牆上，按「老師視角」就看得到；點公佈欄上的哪一張，就打開那一頁。'));
+    c.foot.append(h('button', { class: 'btn', onclick: () => this.project() }, '📽 投影公佈欄'), h('button', { class: 'btn pri', onclick: () => c.close() }, '完成，回到教室'));
+  },
+  lineBox(k, ph, max = 8) {
+    return h('textarea', { class: 'inp', rows: 6, placeholder: ph, value: (D.info[k] || []).join('\n'), oninput: e => { D.info[k] = e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean).slice(0, max); save(); refresh(); } });
+  },
+  tab_rules(p) {
+    p.append(h('label', { class: 'lbl' }, '班級公約（一行一條；公佈欄貼前 5 條，小小宣導員也從這裡挑句子）'), this.lineBox('rules', '上課專心聽講\n發言先舉手'));
+  },
+  tab_honor(p, c) {
+    const auto = this.honorAuto(), set = v => { D.info.honorMode = v; save(); refresh(); c.rebuild(); };
+    p.append(h('div', { class: 'seg' }, h('button', { class: auto ? 'on' : '', onclick: () => set('auto') }, '🏅 自動：分數最高的 5 位'), h('button', { class: auto ? '' : 'on', onclick: () => set('manual') }, '✏️ 自己寫')));
+    if (auto) {
+      const L = this.honorList();
+      p.append(h('p', { class: 'muted' }, '照同學現在的分數自動排，公佈欄只寫名字、不寫分數；分數一樣時座號小的在前面。'),
+        L.length ? h('ol', { class: 'bb-honor' }, L.map(t => h('li', null, t))) : h('p', { class: 'r-empty' }, '還沒有人得分，加分後就會自動上榜。'));
+    } else p.append(h('label', { class: 'lbl' }, '榮譽榜（一行一條，公佈欄貼前 5 條）'), this.lineBox('honor', '例如：整潔比賽第一名'));
+  },
+  tab_tip(p, c) {
+    const inp = h('input', { class: 'inp', value: D.info.tip || '', placeholder: '今天也要加油！', maxlength: 40, oninput: e => { D.info.tip = e.target.value.trim(); save(); refresh(); } });
+    p.append(h('label', { class: 'lbl' }, '小叮嚀（貼在公佈欄上的一句話）'), inp,
+      h('div', { class: 'lbl' }, '常用的'), h('div', { class: 'reasons' }, ['今天也要加油！', '下課記得喝水', '回家記得複習', '準時交作業', '東西用完放回原位', '說話輕聲細語'].map(t =>
+        h('button', { class: 'chip', onclick: () => { D.info.tip = t; save(); refresh(); c.rebuild(); } }, t))));
+  },
+  tab_works(p, c) {
+    const L = this.works(), posted = new Set(this.posted().map(w => w.id));
+    p.append(h('div', { class: 'row wrap' }, h('button', { class: 'btn pri', onclick: () => this.upload(c) }, '＋ 上傳作品照片'),
+      h('span', { class: 'muted small grow' }, '可以一次選很多張。公佈欄貼有勾「貼出來」的最新 3 件；投影時照片會放大。')));
+    if (!L.length) { p.append(h('p', { class: 'r-empty bb-empty' }, '還沒有作品照片')); return; }
+    p.append(h('div', { class: 'bb-works' }, L.map(w => h('div', { class: 'bb-work' + (posted.has(w.id) ? ' up' : '') },
+      h('button', { class: 'bb-th', title: '放大看', onclick: () => this.viewer([w]) }, this.img(w.id), posted.has(w.id) ? h('span', { class: 'bb-up' }, '📌 貼在公佈欄') : null),
+      h('input', { class: 'inp', value: w.t || '', placeholder: '作品名稱（可不寫）', maxlength: 20, oninput: e => { w.t = e.target.value.trim(); save(); refresh(); } }),
+      h('div', { class: 'row' },
+        h('label', { class: 'tog sm' }, h('input', { type: 'checkbox', checked: w.on !== false, onchange: e => { w.on = e.target.checked; save(); refresh(); c.rebuild(); } }), h('span', null, '貼出來')),
+        h('button', { class: 'btn sm danger', onclick: async () => {
+          if (!await ask('刪掉這張作品照片？', '刪掉', { danger: true })) return;
+          D.info.works = (D.info.works || []).filter(x => x.id !== w.id); save(); ImgDB.del(w.id).catch(() => { }); refresh(); c.rebuild();
+        } }, '刪除'))))));
+  },
+  upload(c) {
+    const inp = h('input', { type: 'file', accept: 'image/*', multiple: true, style: { display: 'none' } });
+    inp.onchange = async () => {
+      const files = [...inp.files]; inp.remove();
+      if (!files.length) return;
+      let n = 0;
+      for (const f of files) {
+        try {
+          const url = await readImageFile(f, 1600), id = 'work-' + uid();
+          await ImgDB.put(id, url);
+          (D.info.works = D.info.works || []).push({ id, t: f.name.replace(/\.[^.]+$/, '').slice(0, 20), at: Date.now() + n, on: true }); n++;
+        } catch (e) { toast('讀不到「' + f.name + '」這張圖片'); }
+      }
+      if (D.info.works && D.info.works.length > 40) D.info.works = D.info.works.sort((a, b) => b.at - a.at).slice(0, 40);
+      save(); refresh(); if (c && !c.closed) c.rebuild();
+      if (n) toast('貼上 ' + n + ' 張作品照片');
+    };
+    document.body.append(inp); inp.click();
+  },
+  // 看大圖：一張一張翻（◀ ▶、方向鍵）
+  viewer(list, i = 0) {
+    if (!list.length) return toast('還沒有作品照片');
+    const m = proj('優良作品', c => {
+      const w = list[i];
+      c.setTitle('🖼 優良作品' + (w.t ? '：' + w.t : '') + (list.length > 1 ? '（' + (i + 1) + '／' + list.length + '）' : ''));
+      c.body.append(h('div', { class: 'bb-view' }, this.img(w.id, true)));
+      if (list.length > 1) c.foot.append(h('button', { class: 'btn', onclick: () => { i = (i + list.length - 1) % list.length; c.rebuild(); } }, '◀ 上一張'), h('button', { class: 'btn', onclick: () => { i = (i + 1) % list.length; c.rebuild(); } }, '下一張 ▶'));
+    }, { cls: 'bbv', onClose: () => document.removeEventListener('keydown', key) });
+    const key = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { i = (i + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length; m.rebuild(); } };
+    document.addEventListener('keydown', key);
+  },
+  // 投影公佈欄：有開的幾項做成大卡片；只開「優良作品」時直接一張一張放大照片
+  project() {
+    const S = this.show(), on = BB_PARTS.filter(([k]) => S[k]).map(([k]) => k);
+    if (!on.length) return toast('先選公佈欄要貼哪幾項');
+    if (on.length === 1 && on[0] === 'works') return this.viewer(this.works().filter(w => w.on !== false));
+    proj('公佈欄', c => {
+      c.setTitle('📌 ' + (D.info.className || '我們班') + '的公佈欄');
+      const big = (k, title, body) => h('div', { class: 'bbp-card bbk-' + k }, h('h3', null, title), body);
+      const lines = (L, empty) => L.length ? h('ul', null, L.map(t => h('li', null, t))) : h('p', { class: 'r-empty' }, empty);
+      const out = [];
+      if (S.rules) out.push(big('rules', '班級公約', lines(D.info.rules || [], '還沒有寫公約')));
+      if (S.honor) out.push(big('honor', '🏅 榮譽榜', lines(this.honorList().map((t, i) => (i < 3 ? '🥇🥈🥉'.slice(i * 2, i * 2 + 2) + ' ' : '') + t), '還沒有人上榜')));
+      if (S.duty) out.push(big('duty', '今日值日生', lines(Board.dutyToday().map(s => nameOf(s)), '今天沒有值日生')));
+      if (S.tip) out.push(big('tip', '小叮嚀', lines(this.tipList(), '今天也要加油！')));
+      const tc = out.length;   // 文字卡排上面一排，作品照片排下面一排（一頁放得下）
+      if (S.works) { const P = this.posted(); out.push(big('works', '🖼 優良作品（點照片放大）', P.length ? h('div', { class: 'bbp-works n' + P.length }, P.map((w, i) => h('button', { class: 'bbp-w', onclick: () => this.viewer(P, i) }, this.img(w.id, true), w.t ? h('span', null, w.t) : null))) : h('p', { class: 'r-empty' }, '還沒有作品照片'))); }
+      c.body.append(h('div', { class: 'bbp-grid' + (S.works ? ' hasw' : '') + (tc ? '' : ' only'), style: '--tc:' + Math.max(1, tc) }, out));
+    }, { cls: 'bbp' });
   }
 };
 const ART_CLOCK = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" stroke="#2f4a3f" stroke-width="6"/>'

@@ -6,10 +6,11 @@
 const Look = {
   get fine() { try { return localStorage.getItem('bxbox-look') !== 'simple'; } catch (e) { return true; } },
   set(v) { try { localStorage.setItem('bxbox-look', v); } catch (e) { } },
-  // 3D 教室名牌大小（投影用，只記在這台電腦）：標準／大／特大，預設大（2026-11-03 使用者要名牌放大）
-  get tag() { try { return localStorage.getItem('bxbox-tag') || 'l'; } catch (e) { return 'l'; } },
-  setTag(v) { try { localStorage.setItem('bxbox-tag', v); } catch (e) { } },
-  get tagK() { return { m: 1, l: 1.5, xl: 1.9 }[this.tag] || 1.5; }
+  // 3D 教室名牌大小（只記在這台電腦）：小／標準／大／特大。2026-11-04 使用者要名牌照班班的比例縮小、不擋臉，預設改「標準」，
+  // 存的位置也換新的（bxbox-tag2），以前選過的「大」不會沿用
+  get tag() { try { return localStorage.getItem('bxbox-tag2') || 'm'; } catch (e) { return 'm'; } },
+  setTag(v) { try { localStorage.setItem('bxbox-tag2', v); } catch (e) { } },
+  get tagK() { return { s: .85, m: 1, l: 1.2, xl: 1.45 }[this.tag] || 1; }
 };
 function hashOf(s) {   // FNV-1a 再打散，座號相近、建立時間相同的同學也會長得不一樣
   let x = 2166136261;

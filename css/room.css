@@ -137,3 +137,147 @@
 .r-lw.r-glab { pointer-events: none; background: var(--gc); color: #fff; font-weight: 900; padding: .18em .9em; border-radius: 999px; border: .12em solid #fff; white-space: nowrap; letter-spacing: .06em;
   box-shadow: 0 .12em .4em rgba(30, 30, 30, .3); font-family: var(--title); }
 .r-lw .seat.grouped:not(.sel) .no { background: var(--gc); }
+
+/* ================= 2026-11-04 教室布置立體化、公佈欄、小組討論列（使用者要求） ================= */
+/* 牆上凸出來的方塊（room.js wbox：正面放內容、上面、兩側）；那面牆轉到鏡頭這邊不畫時一起藏起來 */
+.r-view.hide-b .sl-b, .r-view.hide-f .sl-f { visibility: hidden; }
+/* 窗戶：玻璃還畫在牆上（點一下調陽光、換佈景），窗框是凸出來的米白木條 */
+.r-wband { border: 0; box-shadow: inset 0 0 0 2px rgba(120, 140, 150, .14); pointer-events: auto; cursor: pointer; }
+.r3.r-wf { background: #f7f2e8; cursor: pointer; }
+.r-wf-t { background: #fffbf3; cursor: pointer; }
+.r-wf-s { background: #d9cfbd; cursor: pointer; }
+/* 掛飾、萬國旗：離牆一點點，影子落在牆上 */
+.r3.r-garland3 { pointer-events: none; background-repeat: repeat-x; background-position: left top; filter: drop-shadow(0 7px 3px rgba(70, 50, 30, .22)); }
+.r3.r-bunt3 { pointer-events: none; line-height: 0; filter: drop-shadow(0 6px 3px rgba(70, 50, 30, .22)); }
+/* 吊飾：掛在半空中、轉向鏡頭的立牌，輕輕晃；點一下晃大一點 */
+.r3.r-hang { display: flex; gap: 6px; justify-content: center; align-items: flex-start; cursor: pointer; filter: drop-shadow(0 7px 4px rgba(60, 50, 40, .22)); }
+.r3.r-hang > svg { width: auto; height: 100%; flex: none; transform-origin: 50% 0; }
+.r-view.fine .r-hang > svg { animation: hangSway 3.8s ease-in-out var(--d, 0s) infinite alternate; }
+.r-view .r-hang.swing > svg { animation: hangSwing 1.2s ease-out; }
+@keyframes hangSway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes hangSwing { 0% { transform: rotate(0); } 18% { transform: rotate(16deg); } 42% { transform: rotate(-11deg); } 66% { transform: rotate(6deg); } 84% { transform: rotate(-3deg); } 100% { transform: rotate(0); } }
+/* 盆栽、節日擺飾、講桌上的書：可以點（搖一搖） */
+.r-prop.r-tap { pointer-events: auto; cursor: pointer; }
+.r-tap > svg { transform-origin: 50% 100%; }
+.r-view .r-tap.swing > svg { animation: tapHop .3s ease-in-out 4 alternate; }
+@keyframes tapHop { from { transform: none; } to { transform: translateY(-7%) scale(1.04, .97); } }
+/* 冷氣：白色方塊，正面有出風口和溫度燈；開著時下面斜斜吹出一片風 */
+.r3.r-ac3 { background: linear-gradient(#ffffff, #eef2f5 70%, #dfe5ea); border: 2px solid #cfd7de; border-radius: 3px 3px 7px 7px; cursor: pointer; pointer-events: auto; }
+.r3.r-ac3.on { border-color: #8fc4e8; }
+.r3.r-ac3 i { position: absolute; left: 10px; right: 10px; bottom: 6px; height: 7px; border-radius: 3px; background: linear-gradient(#a9b4be, #cfd6dc); }
+.r3.r-ac3:not(.on) .r-ac-led { background: #cfd6dc; }
+.r-ac3-t { background: #f7f9fb; cursor: pointer; }
+.r-ac3-s { background: #dde3e9; cursor: pointer; }
+.r-wind3 { pointer-events: none; }
+.r-wind3 path { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 10 9; opacity: .7; animation: windFlow 1.1s linear infinite; }
+/* 時鐘：圓形掛鐘是幾片圓板疊出厚度；電子鐘是小方塊 */
+.r3.r-clkrim, .r3.r-clk { cursor: pointer; pointer-events: auto; }
+.r3.r-clkrim, .r3.r-clk.an { border-radius: 50%; }
+.r3.r-clk.dg { display: grid; place-items: center; background: #24302c; border: 3px solid #2f4a3f; border-radius: 5px; }
+.r3.r-clk.dg b { color: #8ff0b0; font: 700 20px/1 Consolas, "Courier New", monospace; letter-spacing: .04em; text-shadow: 0 0 6px rgba(120, 255, 170, .6); }
+.r3.r-clk.dg.big b { font-size: 24px; }
+.r-clk-t { background: #3d5d50; cursor: pointer; }
+.r-clk-s { background: #22362d; cursor: pointer; }
+/* 班名牌 */
+.r3.r-sign3 { display: grid; place-items: center; padding: 0 12px; background: #fffdf6; border: 4px solid #e2a54d; border-radius: 6px; font: 700 26px/1 var(--title); color: #6b4a1f; white-space: nowrap; cursor: pointer; pointer-events: auto; }
+.r-sign3-t { background: #f0c27c; cursor: pointer; }
+.r-sign3-s { background: #c98b37; cursor: pointer; }
+/* 公佈欄：軟木板＋綠色木框，紙卡浮在板子前面一點；點紙卡打開那一頁 */
+.r3.r-bb3 { display: grid; gap: 7px; padding: 8px 9px; background: #d9b487 radial-gradient(rgba(120, 80, 40, .14) 1px, transparent 1.5px) 0 0 / 7px 7px; border: 7px solid #6fae98; border-radius: 4px;
+  cursor: pointer; pointer-events: auto; transform-style: preserve-3d; }
+.r3.r-bb3:hover { border-color: #f2c14e; }
+.r-bb3-t { background: #8cc6b0; cursor: pointer; }
+.r-bb3-s { background: #5a977f; cursor: pointer; }
+.r-bb3 .r-card { transform: translateZ(2.5px); backface-visibility: hidden; cursor: pointer; transition: transform .15s; font-size: 12px; line-height: 1.24; padding: 4px 6px 3px; }
+.r-bb3 .r-card b { font-size: 14px; margin: 4px 0 2px; }
+.r-bb3 .r-card:hover { transform: translateZ(2.5px) translateY(-3px) rotate(-1.2deg); }
+.r-card.bbk-rules { background: #fffdf3; } .r-card.bbk-honor { background: #fff6cf; } .r-card.bbk-duty { background: #e5f3ff; } .r-card.bbk-tip { background: #ffe8ef; } .r-card.bbk-works { background: #eff7ea; }
+.r-card .r-works { display: grid; gap: 4px; height: calc(100% - 25px); overflow: visible; }
+.r-works.n1 { grid-template-columns: 1fr; } .r-works.n2 { grid-template-columns: 1fr 1fr; } .r-works.n3 { grid-template-columns: 1fr 1fr 1fr; }
+.r-works img { width: 100%; height: 100%; min-height: 0; object-fit: cover; border-radius: 2px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); background: #e8e2d6; display: block; }
+.r-bb3 .bb-none { grid-column: 1 / -1; align-self: center; font-size: 18px; }
+/* 門（點一下點名） */
+.r3.r-door3 { background: linear-gradient(90deg, #c48a52, #d39b62); border: 7px solid #a8713f; border-bottom: 0; border-radius: 3px 3px 0 0; cursor: pointer; pointer-events: auto; }
+.r3.r-door3 i { position: absolute; left: 24px; right: 24px; top: 18px; height: 56px; background: #cfeaf6; border: 4px solid #a8713f; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5); }
+.r3.r-door3 u { position: absolute; right: 12px; top: 112px; width: 12px; height: 12px; border-radius: 50%; background: #f6c445; box-shadow: 0 2px 0 #8a5a2b, 0 0 0 2px #c99a2e; }
+.r-door3-t { background: #bd844c; cursor: pointer; }
+.r-door3-s { background: #94602f; cursor: pointer; }
+/* 春聯、艾草、海報 */
+.r3.r-cl3 { display: grid; place-items: center; background: #d62828; color: #f6c445; font: 900 26px/1.15 var(--kai); writing-mode: vertical-rl; border-radius: 2px; }
+.r-cl3-t, .r-cl3-s { background: #a51f1f; }
+.r3.r-plate { pointer-events: none; display: flex; gap: 6px; justify-content: center; filter: drop-shadow(3px 5px 3px rgba(60, 40, 20, .25)); }
+.r3.r-plate > svg { width: auto; height: 100%; flex: none; }
+.r3.r-plate.r-tap { pointer-events: auto; cursor: pointer; }
+.r3.r-post3 { display: grid; place-items: center; background: #fffdf3; border: 3px solid #6fae98; border-radius: 4px; font: 700 22px/1 var(--kai); color: #2f4a3f; white-space: nowrap; }
+.r3.r-post3.pink { border-color: #ef7f9f; color: #c0395c; background: #fff0f4; }
+.r3.r-post3.green { border-color: #5b8c5f; color: #3c6b40; }
+.r3.r-post3.exam { border-color: #4f6f85; color: #2c4456; background: #f4f8fb; font-size: 26px; }
+.r-post3-t, .r-post3-s { background: #e6dcc6; }
+/* 黑板：木框厚度＋粉筆溝槽（點黑板打開聯絡簿） */
+.r3.r-chalk { left: 0; top: 0; }
+.r3.r-chalk::after { display: none; }
+.r-chalk-t { background: #caa271; cursor: pointer; }
+.r-chalk-s { background: #9b7646; cursor: pointer; }
+.r3.r-ctray { background: #c4a47a; }
+.r-ctray-t { background: linear-gradient(90deg, transparent 12%, #ffffff 12% 15%, transparent 15% 24%, #f6c445 24% 27%, transparent 27% 34%, #f29fb5 34% 37%, transparent 37%) 0 40% / 100% 30% no-repeat, #e2cba4; }
+.r-ctray-s { background: #b08f63; }
+/* 置物櫃：有同學的號碼格可以點 */
+.r-cub-front i.on { cursor: pointer; }
+.r-cub-front i.on:hover { background: #7a5430; color: #fff; outline: 2px solid #f6c445; }
+
+/* 小組討論中：教室下方的深色提示列 */
+.r-disc { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 4; display: none; align-items: center; gap: 16px; width: max-content; max-width: calc(100% - 24px);
+  padding: 10px 12px 10px 20px; border-radius: 16px; background: rgba(27, 38, 34, .93); color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); cursor: default; }
+.r-view.disc .r-disc { display: flex; }
+.r-disc .dc-l { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.r-disc .dc-l b { font: 800 21px/1.2 var(--title); white-space: nowrap; }
+.r-disc .dc-l span { font-size: 14px; opacity: .85; }
+.r-disc .dc-b { display: flex; gap: 8px; flex: none; }
+.r-disc .btn { background: #fff; color: #263b32; border-color: transparent; font-weight: 700; }
+.r-disc .btn.end { background: #f6c445; color: #3b2a05; }
+.r-view.disc .r-ctl { bottom: 78px; }
+@media (max-width: 1180px) { .r-disc .dc-l span { display: none; } }
+@media (max-width: 760px) { .r-disc { flex-wrap: wrap; justify-content: center; } }
+
+/* 公佈欄視窗 */
+.bbm .lbox { max-width: 880px; }
+.bb-pane { min-height: 200px; }
+.bb-pane .seg { margin-bottom: 10px; }
+.bb-pane .seg button { padding: 8px 16px; font-weight: 700; }
+.bb-show { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.bb-tgls { display: flex; flex-wrap: wrap; gap: 8px; }
+.bb-tgl { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-weight: 700; cursor: pointer; }
+.bb-tgl.on { border-color: #47845b; background: #e8f5ec; color: #28643d; }
+.bb-tgl input { width: 18px; height: 18px; accent-color: #47845b; }
+.bb-honor { font-size: 20px; line-height: 1.75; font-weight: 700; margin: 6px 0; }
+.bb-works { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; }
+.bb-work { border: 2px solid var(--line); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; background: #fff; }
+.bb-work.up { border-color: #4fa3d9; box-shadow: 0 0 0 3px rgba(79, 163, 217, .18); }
+.bb-work .row { gap: 6px; align-items: center; }
+.bb-work .row { justify-content: space-between; flex-wrap: nowrap; }
+.bb-work .tog { margin: 0; font-size: 14px; white-space: nowrap; }
+.bb-th { position: relative; padding: 0; border: 0; background: #f3efe6; border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; cursor: zoom-in; }
+.bb-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bb-up { position: absolute; left: 6px; top: 6px; padding: 2px 9px; border-radius: 999px; background: #2a7fb5; color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .2); }
+.bb-empty { padding: 30px 0; font-size: 18px; text-align: center; }
+/* 投影公佈欄、看大圖 */
+.bbp-grid { flex: 1; min-height: 0; display: grid; gap: 18px; grid-template-columns: repeat(var(--tc, 4), minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.bbp-grid.hasw { grid-template-rows: minmax(0, 1fr) minmax(0, 1.4fr); }
+.bbp-grid.hasw.only { grid-template-rows: minmax(0, 1fr); }
+.bbp-card { background: #fffdf3; border-radius: 22px; padding: 14px 24px 18px; box-shadow: 0 4px 14px rgba(60, 40, 20, .12); border-top: 10px solid #6fae98; overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
+.bbp-card h3 { font: 800 clamp(24px, 2.6vw, 44px)/1.2 var(--title); color: #1f6f5b; margin: 0 0 8px; flex: none; }
+.bbp-card ul { margin: 0; padding-left: 1.1em; font-size: clamp(18px, 2vw, 38px); line-height: 1.45; font-weight: 700; color: #3d3226; }
+.bbp-card .r-empty { font-size: clamp(18px, 1.8vw, 28px); text-align: left; }
+.bbp-card.bbk-honor { background: #fff6cf; border-top-color: #e2a54d; } .bbp-card.bbk-honor ul { list-style: none; padding-left: 0; }
+.bbp-card.bbk-duty { background: #e5f3ff; border-top-color: #4f8fd0; }
+.bbp-card.bbk-tip { background: #ffe8ef; border-top-color: #e07a9a; }
+.bbp-card.bbk-works { background: #eff7ea; border-top-color: #6aae4d; grid-column: 1 / -1; }
+.bbp-works { flex: 1; min-height: 0; display: grid; gap: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bbp-works.n1 { grid-template-columns: minmax(0, 1fr); } .bbp-works.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bbp-w { border: 0; padding: 0; background: none; cursor: zoom-in; display: flex; flex-direction: column; gap: 6px; font: inherit; color: inherit; text-align: center; min-height: 0; }
+.bbp-w img { flex: 1; min-height: 0; width: 100%; object-fit: cover; border-radius: 14px; border: 6px solid #fff; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); background: #fff; }
+.bbp-works.n1 .bbp-w img { object-fit: contain; border: 0; box-shadow: none; background: none; }
+.bbp-w span { font-size: clamp(18px, 1.8vw, 30px); font-weight: 800; }
+.bbv .lbody { align-items: center; justify-content: center; }
+.bb-view { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.bb-view img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, .25); background: #fff; }
