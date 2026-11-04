@@ -132,3 +132,8 @@
 .hwrow.editing { gap: 8px; }
 .hwrow.editing .inp:first-child { flex: 1; min-width: 12em; }
 .hwrow.editing .hw-date { width: auto; }
+/* 2026-11-04 照小組坐：每組地上一塊組色地墊、後面走道浮一個組名牌；名牌的座號圓圈也換成組色 */
+.r-gzone { pointer-events: none; border-radius: 22px; background: color-mix(in srgb, var(--gc) 20%, transparent); border: 4px solid color-mix(in srgb, var(--gc) 55%, transparent); }
+.r-lw.r-glab { pointer-events: none; background: var(--gc); color: #fff; font-weight: 900; padding: .18em .9em; border-radius: 999px; border: .12em solid #fff; white-space: nowrap; letter-spacing: .06em;
+  box-shadow: 0 .12em .4em rgba(30, 30, 30, .3); font-family: var(--title); }
+.r-lw .seat.grouped:not(.sel) .no { background: var(--gc); }

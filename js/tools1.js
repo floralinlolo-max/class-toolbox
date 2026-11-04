@@ -261,7 +261,29 @@ const Groups = {
     const L = shuffle(presentList());
     UI.temp = Array.from({ length: n }, (_, i) => ({ name: '第 ' + (i + 1) + ' 組', color: GROUP_COLORS[i % GROUP_COLORS.length], ids: [] }));
     L.forEach((s, i) => UI.temp[i % n].ids.push(s.id));
-    refresh(); this.board();
+    refresh();
+    // 3D 教室裡同一組會坐在一起（上方有小組討論的提示列），平面座位才直接打開組員名單
+    if (this.p && !this.p.closed) this.p.rebuild();
+    else if (D.info.view === 'flat') this.board();
+    else toast('分成 ' + n + ' 組了，同一組坐在一起');
+  },
+  endTemp() {
+    UI.temp = null; refresh();
+    if (this.p && !this.p.closed) this.p.close();
+    toast('討論結束，回到原本的座位');
+  },
+  tempList() { return (UI.temp || []).map((g, i) => ({ id: 't' + i, name: g.name, color: g.color, ids: g.ids })); },
+  // 固定小組要不要坐在一起（D.info.groupSeat，預設會；在小組計分板、設定小組可以切換）
+  seatOn() { return !UI.temp && D.groups.length > 0 && D.info.groupSeat !== false; },
+  // 3D 教室照小組坐時的分組（Room.layoutSlots 用）：臨時小組討論一定照組坐；排座位時照原本的座位
+  clusters() {
+    if (UI.mode === 'arrange') return null;
+    if (UI.temp) return UI.temp.map(g => ({ name: g.name, color: g.color, ids: g.ids.filter(id => stu(id)) })).filter(g => g.ids.length);
+    if (!this.seatOn()) return null;
+    const L = D.groups.map(g => ({ name: g.name || '小組', color: g.color, ids: this.members(g.id).map(s => s.id) })).filter(g => g.ids.length);
+    const rest = roster().filter(s => !grp(s.group)).map(s => s.id);
+    if (rest.length) L.push({ name: '還沒分組', color: '#8a939c', ids: rest });
+    return L.length ? L : null;
   },
   board() {
     if (this.p && !this.p.closed) return this.p.rebuild();
@@ -269,7 +291,7 @@ const Groups = {
   },
   buildBoard(c) {
     const temp = !!UI.temp;
-    const list = temp ? UI.temp.map((g, i) => ({ id: 't' + i, name: g.name, color: g.color, ids: g.ids })) : D.groups.map(g => ({ ...g, ids: this.members(g.id).map(s => s.id) }));
+    const list = temp ? this.tempList() : D.groups.map(g => ({ ...g, ids: this.members(g.id).map(s => s.id) }));
     c.setTitle(temp ? '臨時小組討論' : '小組計分板');
     const grid = h('div', { class: 'gb-grid n' + list.length });
     for (const g of list) {
@@ -286,9 +308,10 @@ const Groups = {
     if (temp) {
       c.foot.append(h('button', { class: 'btn', onclick: () => this.startTemp(UI.temp.length) }, '🔀 重新分組'),
         h('button', { class: 'btn', onclick: () => this.compStart(list) }, '🏆 單次競賽計分'),
-        h('button', { class: 'btn pri', onclick: () => { UI.temp = null; refresh(); c.close(); toast('討論結束，回到座位'); } }, '結束討論'));
+        h('button', { class: 'btn pri', onclick: () => this.endTemp() }, '結束討論'));
     } else {
       c.foot.append(h('button', { class: 'btn', onclick: () => { this.showMembers = !this.showMembers; c.rebuild(); } }, this.showMembers ? '收起組員' : '顯示組員'),
+        h('button', { class: 'btn', title: '3D 教室裡同一組坐在一起，或回到排好的座位', onclick: () => { D.info.groupSeat = !this.seatOn(); save(); refresh(); c.rebuild(); toast(D.info.groupSeat ? '同一組坐在一起了' : '回到原本的座位'); } }, this.seatOn() ? '🪑 回原本座位' : '👥 照小組坐'),
         h('button', { class: 'btn', onclick: () => this.setup() }, '⚙ 設定小組'),
         h('button', { class: 'btn', onclick: () => this.compStart(list) }, '🏆 單次競賽計分'),
         h('button', { class: 'btn', onclick: () => this.print() }, '🖨 列印組員'),
@@ -320,6 +343,8 @@ const Groups = {
           D.groups = []; D.students.forEach(s => { s.group = null; }); save(); c.rebuild(); refresh();
         } }, '取消分組')));
       if (!D.groups.length) { c.body.append(h('p', { class: 'muted' }, '按「＋」設定組數。')); return; }
+      c.body.append(h('label', { class: 'tog' }, h('input', { type: 'checkbox', checked: D.info.groupSeat !== false, onchange: e => { D.info.groupSeat = e.target.checked; save(); refresh(); } }),
+        h('span', null, '3D 教室裡同一組坐在一起（關掉就照排好的座位坐）')));
       c.body.append(h('div', { class: 'lbl' }, '先點一組（放進），再點下面同學的名字，就把他放進那一組。組名可以直接改。'));
       c.body.append(h('div', { class: 'gs-cols' }, D.groups.map(g => h('div', { class: 'gs-col' + (into === g.id ? ' on' : ''), style: { '--gc': g.color }, onclick: e => { if (e.target.tagName !== 'INPUT') { into = g.id; c.rebuild(); } } },
         h('input', { class: 'inp', value: g.name, oninput: e => { g.name = e.target.value; save(); } }),

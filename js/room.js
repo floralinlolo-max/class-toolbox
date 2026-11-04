@@ -205,6 +205,47 @@ const Room = {
   eye: (() => { let o = {}; try { o = JSON.parse(localStorage.getItem('bxbox-cam') || '{}') || {}; } catch (e) { } const e = Object.assign({}, EYE0, o); e.tilt = clamp(+e.tilt || RM.TILT, 25, TILT_MAX); return e; })(),
   theme() { const t = D.info.theme || 'auto'; return t === 'auto' || !THEMES[t] ? autoTheme() : t; },
   seatPos(r, c) { return { cx: RM.SIDE + (D.info.cols - 1 - c) * RM.CW + RM.CW / 2, y0: RM.BACK + (D.info.rows - 1 - r) * RM.CD }; },
+  /* 座位：平常照排數行數畫；分小組時（Groups.clusters：臨時小組討論，或固定小組選「照小組坐」）同一組的桌子併成一區，
+     一組一個顏色的地墊和組名（2026-11-04 使用者要求，參考班班的小組討論）。原本排好的座位（s.seat）不會改。
+     回傳教室大小和每個座位 { r, c, p:{cx,y0}, s, side：老師站在哪一邊 }，由後排排到前排（名牌前排疊在上面） */
+  layoutSlots() {
+    const R = D.info.rows, C = D.info.cols, G = Groups.clusters(), W0 = RM.SIDE * 2 + C * RM.CW, L0 = RM.BACK + R * RM.CD + RM.FRONT;
+    if (!G) {
+      const at = {}, slots = [];
+      for (const s of D.students) if (seatOK(s)) at[s.seat[0] + ',' + s.seat[1]] = s;
+      for (let r = R - 1; r >= 0; r--) for (let c = 0; c < C; c++) slots.push({ r, c, p: this.seatPos(r, c), s: at[r + ',' + c] || null, side: 1 });
+      return { W: W0, L: L0, slots, zones: [] };
+    }
+    // 試幾種排法（每組排 2 行或 3 行、一列放幾組），挑教室最接近原本大小的（教室變大，畫面上的同學和名牌就變小）；
+    // 同一組裡的桌距和平常一樣（再擠名牌就放不下、會縮得很小），組和組之間多留走道；第 1 組在前排右邊（和第 1 行一樣在老師看過去的右邊）
+    const DX = RM.CW, DY = RM.CD, AX = 70, AY = 80, n = G.length;
+    let best = null;
+    for (const two of [true, false]) for (let per = 1; per <= n; per++) {
+      const box = G.map(g => { const k = g.ids.length, gc = k <= 2 ? k : k <= 4 || two && k <= 8 ? 2 : k <= 12 ? 3 : 4; return { g, gc, gr: Math.ceil(k / gc), w: gc * DX }; });
+      const rows = Math.ceil(n / per), wMax = Math.max(...box.map(b => b.w)), used = per * wMax + (per - 1) * AX;
+      const dep = Array.from({ length: rows }, (_, r) => Math.max(...box.filter((b, i) => Math.floor(i / per) === r).map(b => b.gr)) * DY);
+      const total = dep.reduce((a, b) => a + b, 0) + (rows - 1) * AY;
+      const W = Math.max(W0, RM.SIDE * 2 + used), L = Math.max(L0, RM.BACK + total + RM.FRONT), sc = Math.max(W / W0, L / L0);
+      if (!best || sc < best.sc - 1e-6) best = { box, per, rows, wMax, used, dep, total, W, L, sc };
+    }
+    const { box, per, rows, wMax, used, dep, total, W, L } = best, slots = [], zones = [];
+    let y = RM.BACK + Math.max(0, (L - RM.FRONT - RM.BACK - total) / 2);
+    for (let r = rows - 1; r >= 0; r--) {   // 後面的組先排
+      const dr = dep[r];
+      box.forEach((b, i) => {
+        if (Math.floor(i / per) !== r) return;
+        const j = i % per, x0 = (W + used) / 2 - j * (wMax + AX) - wMax + (wMax - b.w) / 2, y0 = y + dr - b.gr * DY;
+        b.g.ids.map(stu).filter(Boolean).sort((p, q) => p.no - q.no).forEach((s, m) => {
+          const ri = Math.floor(m / b.gc), ci = m % b.gc;   // 座號小的坐前面、右邊
+          slots.push({ r: -1, c: -1, s, p: { cx: x0 + (b.gc - 1 - ci) * DX + DX / 2, y0: y0 + (b.gr - 1 - ri) * DY }, side: ci === 0 ? 1 : ci === b.gc - 1 ? -1 : 1, grp: true });
+        });
+        zones.push({ name: b.g.name, color: b.g.color, x: x0 + 12, y: y0 + 4, w: b.w - 24, d: (b.gr - 1) * DY + 150, cx: x0 + b.w / 2 });
+      });
+      y += dr + AY;
+    }
+    slots.sort((p, q) => p.p.y0 - q.p.y0 || q.p.cx - p.p.cx);
+    return { W, L, slots, zones };
+  },
 
   render(wrap) {
     if (!this.view || this.view.parentNode !== wrap) this.mount(wrap);
@@ -340,8 +381,9 @@ const Room = {
   },
   layoutKey() {
     const i = D.info, seats = D.students.map(s => s.id + ':' + (seatOK(s) ? s.seat.join('.') : '-') + ':' + (isAbsent(s.id) ? 1 : 0) + ':' + (Groups.colorOf(s) || '')).join('|');
+    const G = Groups.clusters(), gk = G ? G.map(g => g.name + '=' + g.ids.join(',')).join(';') : '';
     return [i.rows, i.cols, this.theme(), i.floor, i.deskItem, i.ac !== false, D.clockStyle, Look.fine, Look.tag, i.teacher.avatar, Light.time(), Light.season(), i.outfitSeed || '',
-      UI.heralds.map(x => x.sid + '=' + x.text).join('|'), seats].join('/');
+      UI.heralds.map(x => x.sid + '=' + x.text).join('|'), seats, gk].join('/');
   },
   add(cls, tf, w, ht, props, ...kids) {
     const e = h('div', Object.assign({ class: 'r3 ' + cls }, props || {}), ...kids);
@@ -363,8 +405,9 @@ const Room = {
   },
 
   build() {
-    const R = D.info.rows, C = D.info.cols, th = this.th = this.theme(), fine = Look.fine;
-    const W = this.W = RM.SIDE * 2 + C * RM.CW, L = this.L = RM.BACK + R * RM.CD + RM.FRONT;
+    const th = this.th = this.theme(), fine = Look.fine, lay = this.layoutSlots();
+    const W = this.W = lay.W, L = this.L = lay.L;
+    this.slots = lay.slots;
     for (const e of [...this.floor.children]) if (e !== this.teacherEl) e.remove();
     this.floor.className = 'r-floor ' + (D.info.floor === 'terrazzo' ? 'terrazzo' : 'wood');
     Object.assign(this.floor.style, { width: W + 'px', height: L + 'px', transform: this.floorTf(this.eye) });
@@ -381,11 +424,12 @@ const Room = {
     else Object.assign(this.floor.style, { backgroundImage: '', backgroundSize: '', backgroundRepeat: '' });
     this.tintEl.style.background = (LIGHTS[this.time] || {}).tint || 'transparent';
     this.walls(); this.sunlight(); this.sills(); this.cubbies(); this.frontArea(); this.props(); this.wallsFacing();
-    const at = {}, heralds = new Set(UI.heralds.map(x => x.sid));
-    for (const s of D.students) if (seatOK(s)) at[s.seat[0] + ',' + s.seat[1]] = s;
+    const heralds = new Set(UI.heralds.map(x => x.sid));
     const item = { exam: 'paper', reading: 'read', lunch: 'tray' }[th] || D.info.deskItem;
-    for (let r = R - 1; r >= 0; r--) for (let c = 0; c < C; c++) {   // 從後排畫到前排，名牌前排疊在上面
-      const p = this.seatPos(r, c), s = at[r + ',' + c], hd = s && heralds.has(s.id), sit = s && !hd ? s : null, absent = sit && isAbsent(sit.id);
+    // 照小組坐時：每組地上一塊淡淡的組色地墊（在影子、陽光、圓圈下面）
+    for (const z of lay.zones) this.add('r-gzone', flatAt(z.x, z.y, .3), z.w, z.d, { style: '--gc:' + z.color });
+    for (const { r, c, p, s } of this.slots) {   // 從後排畫到前排，名牌前排疊在上面
+      const hd = s && heralds.has(s.id), sit = s && !hd ? s : null, absent = sit && isAbsent(sit.id);
       const cell = { r, c, sid: sit ? sit.id : null, hsid: hd ? s.id : null, aw: RM.DW };
       const click = () => this.clickCell(cell);
       // 被點到的同學：桌子和椅子下面的地板亮起一圈（使用者要求，顏色照 ChatGPT 的建議）
@@ -417,6 +461,8 @@ const Room = {
       cell.posTop = this.add('r-anchor', flatAt(p.cx - 1, p.y0 + 56, fz + Toon.KID.R * 1.15 * 2.3), 2, 2);
       this.cells.push(cell);
     }
+    // 組名牌：浮在每一組前面的走道上（和名牌一起排，不會疊在一起）
+    for (const z of lay.zones) this.cells.push({ glab: z, aw: RM.DW, anchor: this.add('r-anchor', flatAt(z.cx - 1, z.y + z.d + 22, 2), 2, 2) });
     this.heralds(th, fine);
     // 老師：沿用同一個元素，走路的動畫才不會斷；平常面向同學（教室後面）
     const av = avatarOf(D.info.teacher.avatar), to = { theme: th, fine };
@@ -493,7 +539,8 @@ const Room = {
     if (th === 'sports') { left.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(L) })); right.append(h('div', { class: 'r-bunt', innerHTML: flagsSVG(L) })); }
     // 前牆：黑板（老師視角時在鏡頭這邊，自動不畫；轉到學生視角才看得到）
     const front = paint(this.add('r-wall front bf', backAt(W, L, WH), W, WH), 0);
-    this.chalkEl = h('div', { class: 'r-chalk', title: '點一下編輯黑板', style: { width: Math.round(clamp(W * .64, 320, 820)) + 'px' }, onclick: () => Board.edit() });
+    // 點黑板打開聯絡簿（2026-11-04 主畫面上方的聯絡簿拿掉了，改從這裡寫）
+    this.chalkEl = h('div', { class: 'r-chalk', title: '點一下打開聯絡簿', style: { width: Math.round(clamp(W * .64, 320, 820)) + 'px' }, onclick: () => { D.board.mode = 'contact'; save(); Board.edit(); } });
     front.append(this.chalkEl);
     if (th === 'exam') front.append(at(Math.round(W * .1), h('div', { class: 'r-poster exam r-fp' }, '安靜作答')));
     if (gar) front.append(garland(0, W, 0, 48));
@@ -629,6 +676,7 @@ const Room = {
       // 名牌大小可在設定「外觀」選；舉牌同學的名牌本來就比較大，放大會蓋到牌子上的字，所以不跟著放大
       c.fs = clamp(Math.max(r.width, r.height * 1.6) / c.aw * 20, 13, 26) * Look.tagK;   // 名牌照桌子（舉牌的照牌子）在畫面上的大小，最小 13px×大小設定（大＝19.5px）
       c.face = null; c.pts = null;
+      if (c.glab) { c.fs = 15 * Look.tagK; [c.ax, c.ay] = [c.x, c.y] = pt(c.anchor); continue; }   // 組名牌比名牌大一點
       if (c.herald) { c.ax = c.x = r.left + r.width / 2 - V.left; c.ay = c.y = r.top - V.top; continue; }   // 舉牌的同學名牌放在牌子上面
       if (c.kid && c.kid.isConnected) {   // 臉在畫面上的圓：中心量錨點，半徑照立牌寬度（立牌 110 單位寬，頭半徑 Toon.KID.R）
         const [x, y] = pt(c.faceA); c.face = { x, y, r: c.kid.getBoundingClientRect().width * Toon.KID.R / 110 };
@@ -655,6 +703,7 @@ const Room = {
     const arr = UI.mode === 'arrange';
     for (const c of this.cells) {
       c.lw = null;
+      if (c.glab) { box.append(c.lw = h('div', { class: 'r-lw r-glab', style: '--gc:' + c.glab.color }, c.glab.name)); continue; }
       const s = c.sid && stu(c.sid);
       const t = s ? tile(s) : arr && !c.hsid && !c.herald ? emptySeat(c.r, c.c) : null;
       if (t) box.append(c.lw = h('div', { class: 'r-lw' + (c.herald ? ' hd' : '') }, t));
@@ -746,7 +795,10 @@ const Room = {
     if (s) {
       const hp = this.cells.find(c => c.herald && c.sid === s.id);
       if (hp) { x = hp.X + 84; y = hp.Y + 50; look = [hp.X, hp.Y]; }
-      else if (seatOK(s)) { const p = this.seatPos(s.seat[0], s.seat[1]); x = p.cx + RM.CW / 2; y = p.y0 + 70; look = [p.cx, p.y0 + 50]; }
+      else {   // 站在同學旁邊的走道（照小組坐時站在那一組外側）
+        const sl = (this.slots || []).find(x => x.s && x.s.id === s.id);
+        if (sl) { const p = sl.p; x = p.cx + sl.side * (sl.grp ? RM.DW / 2 + 40 : RM.CW / 2); y = p.y0 + 70; look = [p.cx, p.y0 + 50]; }
+      }
     }
     if (look) face = Math.atan2(look[0] - x, look[1] - y) * 180 / Math.PI;   // 轉身看著那位同學
     const k = [x, y, this.W, this.L].join(','), moved = k !== this.tKey, T = this.teacherT;
@@ -779,7 +831,7 @@ const Room = {
   freeSpot(x, y) {
     const r = 18, boxes = [], td = this.tdesk;
     x = clamp(x, 34, this.W - 34); y = clamp(y, 64, this.L - 24);
-    for (let i = 0; i < D.info.rows; i++) for (let j = 0; j < D.info.cols; j++) { const p = this.seatPos(i, j); boxes.push([p.cx - RM.DW / 2 - r, p.y0 + 20 - r, p.cx + RM.DW / 2 + r, p.y0 + 64 + RM.DD + r]); }
+    for (const { p } of this.slots || []) boxes.push([p.cx - RM.DW / 2 - r, p.y0 + 20 - r, p.cx + RM.DW / 2 + r, p.y0 + 64 + RM.DD + r]);
     if (td) boxes.push([td.x - r, td.y - r, td.x + td.w + r, td.y + td.d + r]);
     for (const [x1, y1, x2, y2] of boxes) {
       if (x <= x1 || x >= x2 || y <= y1 || y >= y2) continue;

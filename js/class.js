@@ -52,20 +52,15 @@ Tick.add(() => {
 });
 
 /* ---------- 黑板 ---------- */
+// 2026-11-04 使用者要求：主畫面上方的聯絡簿（黑板）拿掉，要寫聯絡簿就點 3D 教室裡的黑板（學生視角看得到）或工具列「簿」
 function renderBoard() {
-  const b = $('#board'); b.replaceChildren();
-  b.classList.toggle('small', !!D.info.boardSmall);
-  // 收小時倒數、值日生放右邊一橫列，平常寫在聯絡簿前面
-  const small = !!D.info.boardSmall, right = small ? Board.sideBox() : h('div');
-  const main = h('div', { class: 'b-main', title: '點一下編輯黑板', onclick: () => Board.edit() }, Board.render(false, small ? undefined : {}));
-  b.append(main, right,
-    h('button', { class: 'b-min', title: D.info.boardSmall ? '展開黑板' : '收小黑板', onclick: e => { e.stopPropagation(); D.info.boardSmall = !D.info.boardSmall; save(); renderBoard(); } }, D.info.boardSmall ? '▾' : '▴'));
-  requestAnimationFrame(() => { const inner = main.firstChild; if (inner) fitText(main, inner, 0, D.info.boardSmall ? 22 : 40); });
+  const b = $('#board'); if (!b) return;
+  b.hidden = true; b.replaceChildren();
 }
 
 /* ---------- 模式提示列 ---------- */
 function renderBanner() {
-  const b = $('#banner'); b.replaceChildren(); b.hidden = UI.mode === 'normal';
+  const b = $('#banner'); b.replaceChildren(); b.hidden = UI.mode === 'normal' && !UI.temp;
   const done = h('button', { class: 'btn pri', onclick: () => setMode('normal') }, '完成');
   if (UI.mode === 'multi') {
     b.append(h('span', { class: 'bn-t' }, '☑️ 多選：點同學選取，已選 ' + UI.multi.size + ' 位'),
@@ -94,6 +89,13 @@ function renderBanner() {
       h('button', { class: 'btn', onclick: () => autoSeat('no') }, '依座號排'),
       h('button', { class: 'btn', onclick: () => autoSeat('clear') }, '全部離開座位'),
       h('button', { class: 'btn', onclick: () => printSeats() }, '🖨 列印座位表'), done);
+  } else if (UI.temp) {
+    // 臨時小組討論：3D 教室裡同一組坐在一起（Room.layoutSlots），結束或重新整理就回到原本的座位
+    b.append(h('span', { class: 'bn-t' }, '🗣 小組討論：全班隨機分成 ' + UI.temp.length + ' 組，按「結束討論」或重新整理網頁，就回到原本的座位'),
+      h('button', { class: 'btn', onclick: () => Groups.startTemp(UI.temp.length) }, '🔀 重新分組'),
+      h('button', { class: 'btn', onclick: () => Groups.board() }, '📋 組員名單'),
+      h('button', { class: 'btn', onclick: () => Groups.compStart(Groups.tempList()) }, '🏆 單次競賽計分'),
+      h('button', { class: 'btn pri', onclick: () => Groups.endTemp() }, '結束討論'));
   }
 }
 
