@@ -71,7 +71,11 @@ function fitText(box, inner, step = 0, max = 600) {
 const HW_NEXT = { '': 'miss', miss: 'fix', fix: 'done', done: '' };
 const HW_T = { miss: '缺交', fix: '要訂正', done: '完成' };
 const Homework = {
-  showNames: false,
+  showNames: false, editId: null,
+  // 投影的字放大縮小（2026-11-04 使用者要求），記在這台電腦
+  zoom: (() => { try { return clamp(+localStorage.getItem('bxbox-owez') || 1, .6, 2); } catch (e) { return 1; } })(),
+  setZoom(z, c) { this.zoom = clamp(Math.round(z * 10) / 10, .6, 2); try { localStorage.setItem('bxbox-owez', this.zoom); } catch (e) { } c.rebuild(); },
+  applyZoom(c) { c.body.style.zoom = this.zoom; c.ov.style.setProperty('--owz', this.zoom); },
   get(id) { return D.hw.find(w => w.id === id); },
   mark(id, sid) { const w = this.get(id); return w ? w.marks[sid] || '' : ''; },
   setMark(w, sid, v) {
@@ -97,6 +101,14 @@ const Homework = {
       if (!D.hw.length) c.body.append(h('p', { class: 'muted' }, '還沒有作業。新增後按「檢查」，再點教室裡的同學標記 缺交 → 要訂正 → 完成。'));
       c.body.append(h('div', { class: 'hwlist' }, D.hw.map(w => {
         const cnt = k => Object.values(w.marks).filter(v => v === k).length;
+        if (this.editId === w.id) {   // 編輯中：改作業名稱和日期
+          const nm = h('input', { class: 'inp', value: w.name, placeholder: '作業名稱' }), dt = h('input', { class: 'inp hw-date', type: 'date', value: w.date });
+          const ok = () => { const v = nm.value.trim(); if (!v) return toast('作業名稱不能空白'); w.name = v; if (dt.value) w.date = dt.value; this.editId = null; save(); c.rebuild(); };
+          nm.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+          setTimeout(() => { nm.focus(); nm.select(); }, 0);
+          return h('div', { class: 'hwrow editing' }, nm, dt, h('div', { class: 'row' },
+            h('button', { class: 'btn sm pri', onclick: ok }, '儲存'), h('button', { class: 'btn sm', onclick: () => { this.editId = null; c.rebuild(); } }, '取消')));
+        }
         return h('div', { class: 'hwrow' },
           h('div', { class: 'hw-t' }, h('b', null, w.name), h('small', { class: 'muted' }, '　' + fmtMD(w.date))),
           h('div', { class: 'hw-c' }, h('span', { class: 'tag miss' }, '缺 ' + cnt('miss')), h('span', { class: 'tag fix' }, '訂 ' + cnt('fix')), h('span', { class: 'tag done' }, '✓ ' + cnt('done'))),
@@ -104,10 +116,11 @@ const Homework = {
             h('button', { class: 'btn sm pri', onclick: () => { c.close(); this.check(w.id); } }, '檢查'),
             h('button', { class: 'btn sm', onclick: () => this.listCheck(w.id) }, '名單'),
             h('button', { class: 'btn sm', onclick: () => this.project(w.id) }, '投影'),
+            h('button', { class: 'btn sm', onclick: () => { this.editId = w.id; c.rebuild(); } }, '編輯'),
             h('button', { class: 'link danger', onclick: async () => { if (await ask('刪除「' + w.name + '」和它的檢查紀錄？', '刪除', { danger: true })) { D.hw = D.hw.filter(x => x !== w); save(); c.rebuild(); } } }, '刪除')));
       })));
       c.foot.append(h('button', { class: 'btn', onclick: () => this.projectAll() }, '全部投影'), h('button', { class: 'btn', onclick: () => this.stats() }, '統計'), h('button', { class: 'btn pri', onclick: () => c.close() }, '完成'));
-    }, { cls: 'wide' });
+    }, { cls: 'wide', onClose: () => { this.editId = null; } });
   },
   listCheck(id) {
     const w = this.get(id); if (!w) return;
@@ -126,14 +139,18 @@ const Homework = {
   oweHead(c, all, setAll) {
     return [h('span', { class: 'owe-tip' }, '點卡片切換：缺交 → 要訂正 → 完成 → 清除'),
       setAll ? h('button', { class: 'btn sm', onclick: () => { setAll(!all); c.rebuild(); } }, all ? '只看還沒交齊' : '顯示全班') : null,
-      h('button', { class: 'btn sm', onclick: () => { this.showNames = !this.showNames; c.rebuild(); } }, this.showNames ? '只顯示座號' : '顯示名字')];
+      h('button', { class: 'btn sm', onclick: () => { this.showNames = !this.showNames; c.rebuild(); } }, this.showNames ? '只顯示座號' : '顯示名字'),
+      h('span', { class: 'owe-zoom', title: '投影的字放大縮小（記在這台電腦）' },
+        h('button', { class: 'btn sm', disabled: this.zoom <= .6, onclick: () => this.setZoom(this.zoom - .1, c) }, 'A－'),
+        h('b', null, Math.round(this.zoom * 100) + '%'),
+        h('button', { class: 'btn sm', disabled: this.zoom >= 2, onclick: () => this.setZoom(this.zoom + .1, c) }, 'A＋'))];
   },
   project(id) {
     const w = this.get(id); if (!w) return;
     const keep = new Set(this.owing(w).map(s => s.id));   // 打開時還沒交齊的同學
     let all = false;
     proj('還沒交齊：' + w.name, c => {
-      c.headExtra = this.oweHead(c, all, v => { all = v; });
+      c.headExtra = this.oweHead(c, all, v => { all = v; }); this.applyZoom(c);
       const L = roster().filter(s => all || keep.has(s.id) || w.marks[s.id] === 'miss' || w.marks[s.id] === 'fix');
       if (!L.length) { c.body.append(h('div', { class: 'bigmsg' }, '🎉 全部交齊了！')); return; }
       if (!this.owing(w).length) c.body.append(h('div', { class: 'owe-ok' }, '🎉 全部交齊了！'));
@@ -143,12 +160,23 @@ const Homework = {
   },
   projectAll() {
     const W = D.hw.filter(w => this.owing(w).length), keep = new Map(W.map(w => [w.id, new Set(this.owing(w).map(s => s.id))]));   // 打開時還欠的作業和同學
+    // 每項作業一個區塊，可以按 ▲▼ 上下移動（2026-11-04 使用者要求）；順序也存回作業清單
+    const move = (w, d, c) => {
+      const vis = W.filter(x => D.hw.includes(x)), i = vis.indexOf(w), o = vis[i + d]; if (!o) return;
+      const a = W.indexOf(w), b = W.indexOf(o); [W[a], W[b]] = [W[b], W[a]];
+      const p = D.hw.indexOf(w), q = D.hw.indexOf(o); [D.hw[p], D.hw[q]] = [D.hw[q], D.hw[p]];
+      save(); c.rebuild();
+    };
     proj('還沒交齊的作業', c => {
-      c.headExtra = this.oweHead(c);
+      c.headExtra = this.oweHead(c); this.applyZoom(c);
       if (!W.length) { c.body.append(h('div', { class: 'bigmsg' }, '🎉 作業都交齊了！')); return; }
-      c.body.append(h('div', { class: 'owe-all' }, W.filter(w => D.hw.includes(w)).map(w => {
+      const vis = W.filter(w => D.hw.includes(w));
+      c.body.append(h('div', { class: 'owe-all' }, vis.map((w, i) => {
         const k = keep.get(w.id), L = roster().filter(s => k.has(s.id) || w.marks[s.id] === 'miss' || w.marks[s.id] === 'fix');
-        return h('div', { class: 'owe-sec' }, h('h3', null, h('span', { class: 'owe-title' }, w.name), this.owing(w).length ? null : h('span', { class: 'owe-ok sm' }, '　🎉 交齊了')),
+        return h('div', { class: 'owe-sec' }, h('h3', null, h('span', { class: 'owe-title' }, w.name), this.owing(w).length ? null : h('span', { class: 'owe-ok sm' }, '　🎉 交齊了'),
+          vis.length > 1 ? h('span', { class: 'owe-mv' },
+            h('button', { class: 'btn sm', title: '往上移', disabled: i === 0, onclick: () => move(w, -1, c) }, '▲'),
+            h('button', { class: 'btn sm', title: '往下移', disabled: i === vis.length - 1, onclick: () => move(w, 1, c) }, '▼')) : null),
           h('div', { class: 'owe-grid sm' }, L.map(s => this.oweCard(w, s, k, c))));
       })));
     }, { cls: 'owep' });
