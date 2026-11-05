@@ -281,3 +281,27 @@
 .bbv .lbody { align-items: center; justify-content: center; }
 .bb-view { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
 .bb-view img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, .25); background: #fff; }
+/* ---------- 2026-11-05 加分開心跳、扣分搖頭（使用者要求「加分時學生會微笑開心跳動，扣分時會搖頭晃動」） ---------- */
+.r-kid .fd, .r-herald .fd, .r-teacher .fd { display: none; }
+.sad .fn { display: none; }
+.sad .fd { display: inline; }
+/* 比 app.css 的 sway（平常輕輕晃）、sel（被點到時小跳）後面，蓋過它們 */
+.r-view .r-kid[data-id].happy > svg, .r-view .r-herald[data-id].happy > svg { transform-origin: 50% 100%; animation: kidJump .52s ease-in-out 4; }
+.r-view .r-kid[data-id].sad > svg, .r-view .r-herald[data-id].sad > svg { transform-origin: 50% 100%; animation: kidWobble .62s ease-in-out 3; }
+.r-view .sad .hd { transform-box: fill-box; transform-origin: 50% 85%; animation: headNo .3s ease-in-out 6; }
+@keyframes kidJump { 0%, 100% { transform: none; } 14% { transform: scale(1.06, .92); } 46% { transform: translateY(-24px) scale(.96, 1.05); } 72% { transform: translateY(-4px); } 86% { transform: scale(1.03, .97); } }
+@keyframes kidWobble { 0%, 100% { transform: none; } 25% { transform: rotate(-3.5deg); } 75% { transform: rotate(3.5deg); } }
+@keyframes headNo { 0%, 100% { transform: none; } 25% { transform: translateX(-2.5px) rotate(-11deg); } 75% { transform: translateX(2.5px) rotate(11deg); } }
+/* 頭上冒出來的星星、愛心、汗滴：放在 .r-view 最上層（平面），left/top/字級/--fx 由 Room.react() 依頭在螢幕上的位置和大小給 */
+.r-fx { position: absolute; z-index: 4; pointer-events: none; font-style: normal; font-weight: 900; line-height: 1; font-family: "Segoe UI Symbol", "Segoe UI Emoji", sans-serif;
+  text-shadow: 0 0 2px #fff, 0 0 4px #fff; transform: translate(-50%, -50%); animation-fill-mode: both; }
+.r-fx.happy { color: #ffbf1f; animation-name: fxUp; animation-duration: 1.5s; animation-timing-function: ease-out; }
+.r-fx.happy.f1 { color: #ff5f8a; font-size: 88% !important; animation-delay: .15s; }
+.r-fx.happy.f2 { animation-delay: .3s; }
+@keyframes fxUp { 0% { opacity: 0; transform: translate(calc(-50% + var(--fx, 0px) * .3), -30%) scale(.4); }
+  22% { opacity: 1; transform: translate(calc(-50% + var(--fx, 0px)), -90%) scale(1.1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--fx, 0px) * 1.25), -250%) scale(.9); } }
+.r-fx.sad { width: .62em; height: .62em; border-radius: 0 50% 50% 50%; background: radial-gradient(circle at 62% 60%, #e9f8ff 0 18%, #8ed3f7 46%, #4fa9df 100%); box-shadow: 0 0 0 1.5px #fff;
+  animation-name: fxDrop; animation-duration: 1.8s; animation-timing-function: ease-in; }   /* 汗滴：水滴形（尖角朝上），CSS 畫的，各台電腦看起來一樣 */
+@keyframes fxDrop { 0% { opacity: 0; transform: translate(-50%, -90%) rotate(45deg) scale(.5); } 18% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1); }
+  70% { opacity: 1; } 100% { opacity: 0; transform: translate(-40%, 260%) rotate(45deg) scale(.85); } }

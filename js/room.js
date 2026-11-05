@@ -396,6 +396,27 @@ const Room = {
     b.el = this.add(cls, this.billTf(b), w, ht, props);
     this.bbs.push(b); return b.el;
   },
+  // 磨石子地板：SVG 有 2600 顆碎石和雜訊濾鏡，每換一次縮放比例重畫約 60ms（實測），
+  // 所以先用 SVG，同時在背景畫成 1080×1080 的 JPEG（3 倍解析度）換上去，放大縮小、轉鏡頭都不用重畫碎石
+  terrazzoBG() {
+    if (SCENE.tzURL) return SCENE.tzURL;
+    const svgU = URL.createObjectURL(new Blob([terrazzoSVG()], { type: 'image/svg+xml' }));
+    SCENE.tzURL = 'url("' + svgU + '")';
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 1080;
+        c.getContext('2d').drawImage(img, 0, 0, 1080, 1080);
+        c.toBlob(b => {
+          if (!b) return;
+          SCENE.tzURL = 'url("' + URL.createObjectURL(b) + '")';
+          if (this.floor && this.floor.classList.contains('terrazzo')) this.floor.style.backgroundImage = SCENE.tzURL;
+        }, 'image/jpeg', .9);
+      } catch (e) { }   // 直接開本機檔案時有的瀏覽器不准把圖畫成 JPEG，就一直用 SVG
+    };
+    img.src = svgU;
+    return SCENE.tzURL;
+  },
   layoutKey() {
     const i = D.info, seats = D.students.map(s => s.id + ':' + (seatOK(s) ? s.seat.join('.') : '-') + ':' + (isAbsent(s.id) ? 1 : 0) + ':' + (Groups.colorOf(s) || '')).join('|');
     const G = Groups.clusters(), gk = G ? G.map(g => g.name + '=' + g.ids.join(',')).join(';') : '';
@@ -438,7 +459,7 @@ const Room = {
     this.time = Light.time(); this.season = Light.season(); this.lightKey = this.time + this.season;
     // 木地板：拼貼圖壓扁成長條木板（一片約 20×80）
     if (D.info.floor !== 'terrazzo') Object.assign(this.floor.style, { backgroundImage: svgURL(SCENE.floor), backgroundSize: '120px 480px', backgroundRepeat: 'repeat' });   // 直向木板
-    else Object.assign(this.floor.style, { backgroundImage: '', backgroundSize: '', backgroundRepeat: '' });
+    else Object.assign(this.floor.style, { backgroundImage: this.terrazzoBG(), backgroundSize: '360px 360px', backgroundRepeat: 'repeat' });   // 磨石子大方磚（scenery.js）
     this.tintEl.style.background = (LIGHTS[this.time] || {}).tint || 'transparent';
     this.walls(); this.sunlight(); this.sills(); this.cubbies(); this.frontArea(); this.props(); this.wallsFacing();
     const heralds = new Set(UI.heralds.map(x => x.sid));
@@ -960,15 +981,28 @@ const Room = {
     this.justDragged = true; setTimeout(() => { this.justDragged = false; }, 0);
     const T = this.teacherT; this.setHome(T.x, T.y, T.face); refresh();
   },
+  // 加分：笑瞇瞇、開心地跳（頭上冒星星和愛心）；扣分（2026-11-05 使用者要求）：八字眉、嘴角往下，搖頭、身體左右晃，頭旁邊一滴汗
   react(sids, d, why, kind) {
     if (!this.view || !this.view.isConnected || !this.floor) return;
-    const cls = kind === 'wow' ? 'wow' : d > 0 ? 'happy' : null;
+    const cls = kind === 'wow' ? 'wow' : d > 0 ? 'happy' : d < 0 ? 'sad' : null;
     if (!cls) return;
+    const fx = { happy: ['★', '♥', '★'], sad: ['💧'] }[cls];
     for (const id of sids) {
       const el = this.floor.querySelector('.r-kid[data-id="' + id + '"], .r-herald[data-id="' + id + '"]'); if (!el) continue;
-      el.classList.remove('happy', 'wow'); el.classList.add(cls);
-      clearTimeout(el._rt); el._rt = setTimeout(() => el.classList.remove(cls), kind === 'wow' ? 6000 : 2600);
+      el.classList.remove('happy', 'wow', 'sad'); void el.offsetWidth; el.classList.add(cls);   // 連按也重新播一次
+      // 星星、汗滴：放在畫面最上層（和名牌同一層，平面的），位置用 measure() 量好的臉（c.face：臉在畫面上的圓心、半徑）。
+      // 放在 3D 立牌裡面的話，Chrome 會把有動畫的小元素排到地板後面看不到；量 SVG 頭的方框也不準（都實測過）
+      const c = fx && sids.length <= 12 && this.cells.find(q => q.sid === id && q.face), F = c && c.face;
+      if (F) {
+        const sad = cls === 'sad', x = F.x + (sad ? F.r * .95 : 0), y = F.y - F.r * (sad ? .35 : 1.25), sz = clamp(F.r * (sad ? .75 : 1.15), 10, 44);   // 汗滴在頭的右上方
+        fx.forEach((t, i) => {
+          const f = h('i', { class: 'r-fx ' + cls + ' f' + i, style: 'left:' + x.toFixed(0) + 'px;top:' + y.toFixed(0) + 'px;font-size:' + sz.toFixed(0) + 'px;--fx:' + ((i - 1) * F.r * 1.3).toFixed(0) + 'px' }, sad ? '' : t);
+          this.view.append(f); setTimeout(() => f.remove(), 2100);
+        });
+      }
+      clearTimeout(el._rt); el._rt = setTimeout(() => el.classList.remove(cls), kind === 'wow' ? 6000 : 2400);
     }
+    if (d < 0) return;   // 扣分時老師不走過去
     if (sids.length !== 1 || D.info.teacherWalk === false || !stu(sids[0])) return;
     this.visit = { sid: sids[0], text: kind === 'wow' ? '你真幸運！' : (why ? why + '，好棒！' : '好棒！') };
     this.moveTeacher();

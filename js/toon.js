@@ -172,10 +172,14 @@ const Toon = (() => {
     };
     const mouth = curve(S, H, R, [[-25, -7], [-28.5, 0], [-25, 7]], F.mouth || '#9b4f4b', 1.5 * k);
     face.push(`<g class="fn"><g class="eyes">${eye(-23)}${eye(23)}</g>${mouth}</g>`);
-    if (fine && o.expr !== false) {
+    // 表情（CSS 切換）：fh 加分的笑臉、fs 抽中的驚訝臉、fd 扣分的難過臉（2026-11-05 使用者要求「扣分時會搖頭晃動」，簡單畫質也畫）
+    if (o.expr !== false) {
       const arc = lon => curve(S, H, R, [[-1, lon - 9], [5, lon], [-1, lon + 9]], '#231d20', 2.3 * k);
       face.push(`<g class="fh">${arc(-23)}${arc(23)}${patch(S, H, R, -28, 0, 4.6 * k, 3.6 * k, '#9f4f54')}${patch(S, H, R, -30, 0, 2.6 * k, 1.4 * k, '#f7a1a6')}</g>`);
       face.push(`<g class="fs">${eye(-23, true)}${eye(23, true)}${patch(S, H, R, -29, 0, 2.6 * k, 3.4 * k, '#743c43')}</g>`);
+      // 難過：眉毛內側往上（八字眉）、嘴角往下、一顆淚珠
+      const brow = (lon, sx) => curve(S, H, R, [[12 + (sx < 0 ? 0 : 5), lon - 8], [14, lon], [12 + (sx < 0 ? 5 : 0), lon + 8]], '#231d20', 1.6 * k);
+      face.push(`<g class="fd">${eye(-23)}${eye(23)}${brow(-23, -1)}${brow(23, 1)}${curve(S, H, R, [[-30, -7], [-26, 0], [-30, 7]], F.mouth || '#9b4f4b', 1.6 * k)}${patch(S, H, R, -13, -31, 1.7 * k, 2.6 * k, '#7cc6f2')}</g>`);
     }
     s += face.join('');
     if (L.acc === 'beard') s += capSvg(S, H, R + .3, dirOf(-48, 0), 42, hc) + patch(S, H, R + .5, -22, 0, 6 * k, 2 * k, hc);
@@ -205,7 +209,7 @@ const Toon = (() => {
     if (th === 'moon') s += capSvg(S, H, R + 2, dirOf(86, 0), 60, '#c2d462');
     if (th === 'cny') s += capSvg(S, H, R + 1.5, dirOf(90, 0), 52, '#a4161a') + band(S, H, R + 1.8, 38, '#f6c445', 4.5 * k);
     if (th === 'sports') s += band(S, H, R + 1, 32, o.band || '#e8574a', 6.5 * k);
-    S.put(hd, s);
+    S.put(hd, '<g class="hd">' + s + '</g>');   // 整顆頭包成一組，扣分時 CSS 讓它左右搖（.sad .hd）
     // 頭上凸出來的東西：各自依遠近排
     const top = add(H, [0, R, 0]);
     if (curly) {

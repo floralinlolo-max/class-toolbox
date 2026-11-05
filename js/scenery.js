@@ -20,6 +20,35 @@ const SCENE = {
     + '<g fill="#A9CEA0"><circle cx="27" cy="12" r="6"/><circle cx="16" cy="23" r="5"/><circle cx="39" cy="21" r="6"/><circle cx="30" cy="28" r="5"/></g></svg>'
   ]
 };
+// 磨石子地板（2026-11-05 使用者給參考圖，美編由 ChatGPT 網頁版設計，問了兩次：第一次顆粒太稀，第二次改成「密集芝麻灰」）：
+// 360×360 一張，2×2 塊 180 單位的大方磚（課桌寬 112），暖米灰底、四塊磚深淺微微不同；
+// 最細的一層用 feTurbulence 雜訊（淡淡的礦物紋），上面每塊磚 650 顆不規則多邊形碎石（象牙白、淺灰白為主，炭灰只點綴），固定種子每次畫出來一樣。
+// 自己改的地方：ChatGPT 的四邊接縫畫在磚裡面（0.7、359.3），兩張拼起來會變兩倍粗 → 改畫在 0 和 360（各露出一半，拼起來剛好一條）
+function terrazzoSVG() {
+  const TILE = 180;
+  const rng0 = seed => () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };   // mulberry32
+  const tiles = [{ x: 0, y: 0, color: '#D5D3CB', seed: 12345 }, { x: 180, y: 0, color: '#D8D6CE', seed: 23456 }, { x: 0, y: 180, color: '#D2D0C8', seed: 34567 }, { x: 180, y: 180, color: '#D6D4CC', seed: 45678 }];
+  const grains = [['#F8F7F1', 30], ['#EDECE6', 27], ['#D0D0CA', 19], ['#B1B2AC', 13], ['#888A84', 8], ['#555750', 3]];   // 碎石顏色與比例（%）
+  const pick = rng => { let v = rng() * 100; for (const [c, w] of grains) { v -= w; if (v < 0) return c; } return grains[0][0]; };
+  let bg = '', micro = '', s = '';
+  for (const t of tiles) {
+    const rng = rng0(t.seed);
+    bg += '<rect x="' + t.x + '" y="' + t.y + '" width="180" height="180" fill="' + t.color + '"/>';
+    micro += '<rect x="' + t.x + '" y="' + t.y + '" width="180" height="180" fill="#D8D6CE" filter="url(#tzn)" opacity=".23"/>';
+    for (let i = 0; i < 650; i++) {
+      const x = t.x + 3 + rng() * (TILE - 6), y = t.y + 3 + rng() * (TILE - 6);
+      const radius = rng() < .76 ? .85 + rng() * .8 : 1.7 + rng() * 1.15, color = pick(rng);   // 多數小顆粒，少數中型碎石
+      const sides = 4 + Math.floor(rng() * 3), rot = rng() * Math.PI * 2, pts = [];
+      for (let k = 0; k < sides; k++) { const an = rot + Math.PI * 2 * k / sides, r = radius * (.58 + rng() * .78); pts.push((x + Math.cos(an) * r).toFixed(1) + ',' + (y + Math.sin(an) * r).toFixed(1)); }
+      s += '<polygon points="' + pts.join(' ') + '" fill="' + color + '" opacity="' + (.82 + rng() * .18).toFixed(2) + '"/>';
+    }
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360"><defs>'
+    + '<filter id="tzn" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="2" seed="28" stitchTiles="stitch" result="noise"/>'
+    + '<feColorMatrix in="noise" type="saturate" values="0" result="g"/><feComponentTransfer in="g"><feFuncR type="gamma" amplitude="1.15" exponent="0.8" offset="-0.08"/><feFuncG type="gamma" amplitude="1.15" exponent="0.8" offset="-0.08"/>'
+    + '<feFuncB type="gamma" amplitude="1.15" exponent="0.8" offset="-0.08"/><feFuncA type="table" tableValues="0 0.8"/></feComponentTransfer></filter></defs>'
+    + bg + micro + s + '<path d="M180 0V360M0 180H360M0 0V360M360 0V360M0 0H360M0 360H360" fill="none" stroke="#AAA9A1" stroke-width="1.4" opacity=".95"/></svg>';
+}
 // 光線：一天的時段（光斑顏色與透明度、窗外天空色調）
 const LIGHTS = {
   morning: { name: '早上', spot: [255, 242, 194, .5], sky: 'rgba(169,216,239,.18)', tint: 'rgba(255,250,236,.05)', elev: 34, from: 'left' },
